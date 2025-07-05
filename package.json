@@ -1,14 +1,15 @@
 {
-  "name": "snaptalk-matchmaking-server",
+  "name": "moderation-server",
   "version": "1.0.0",
-  "main": "index.js",
+  "type": "module",
+  "main": "server.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "firebase-admin": "^11.10.1"
+    "node-fetch": "^3.4.1"
   }
 }
