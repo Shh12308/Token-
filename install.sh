@@ -444,6 +444,133 @@ class ErrorBoundary extends React.Component {
 export default ErrorBoundary;
 EOF
 
+# Create the DEPLOYMENT.md file in the project root
+cat > DEPLOYMENT.md << 'EOF'
+# Deployment Guide
+
+This guide covers how to deploy the Fintech Pro React application to various platforms.
+
+## Step 1: Prepare Your Project for Production
+
+Before deploying, you must create an optimized production build of your React app.
+
+1.  **Set the API URL:** Your app needs to know the URL of the live backend API. This is configured using an environment variable. Create a file named `.env.production` in the root of your project:
+
+    ```bash
+    # .env.production
+    # Replace this with the URL of your deployed backend API
+    REACT_APP_API_URL=https://your-api-domain.com
+    ```
+
+2.  **Create the Build:** Run the build script. This creates a `build` folder with all the static files for your application.
+
+    ```bash
+    npm run build
+    ```
+
+    You can test the production build locally by running `npx serve -s build`.
+
+## Step 2: Choose a Deployment Platform
+
+### Option 1: Vercel (Highly Recommended)
+
+Vercel offers a seamless, zero-config deployment experience for React apps.
+
+**Why Vercel?**
+-   **Git Integration:** Push to your `main` branch to deploy automatically.
+-   **Free SSL & Global CDN:** HTTPS and fast performance are included by default.
+-   **Serverless Functions:** Easy way to host a backend alongside your frontend.
+
+**How to Deploy on Vercel:**
+1.  **Push to GitHub:** Ensure your project is in a GitHub repository.
+2.  **Sign Up:** Go to [vercel.com](https://vercel.com) and sign up with your GitHub account.
+3.  **Import Project:** Click "New Project" and import your repository.
+4.  **Configure Environment Variables:**
+    -   In your Vercel project settings, go to "Environment Variables".
+    -   Add a new variable:
+        -   **Name:** `REACT_APP_API_URL`
+        -   **Value:** `https://your-api-domain.com`
+5.  **Deploy:** Click "Deploy". Your site will be live at a `*.vercel.app` URL.
+
+### Option 2: Netlify
+
+Netlify is another excellent platform, very similar to Vercel.
+
+**Why Netlify?**
+-   **Drag-and-Drop:** For quick tests, you can drag your `build` folder onto their site.
+-   **Git Integration & CI/CD:** Automated deployments from Git.
+-   **Free SSL & CDN:** Included by default.
+
+**How to Deploy on Netlify:**
+1.  **Push to GitHub:** Ensure your project is in a GitHub repository.
+2.  **Sign Up:** Go to [netlify.com](https://netlify.com) and sign up.
+3.  **Create New Site:** Click "Add new site" -> "Import an existing project".
+4.  **Connect to Git:** Choose GitHub, select your repository.
+5.  **Configure Build Settings:**
+    -   **Build command:** `npm run build`
+    -   **Publish directory:** `build`
+6.  **Set Environment Variables:**
+    -   Go to "Site settings" -> "Build & deploy" -> "Environment".
+    -   Add a new variable:
+        -   **Key:** `REACT_APP_API_URL`
+        -   **Value:** `https://your-api-domain.com`
+7.  **Deploy Site:** Click "Deploy site". Your site will be live at a `*.netlify.app` URL.
+
+### Option 3: AWS S3 + CloudFront (DIY Approach)
+
+This method offers maximum control but is more complex. It involves hosting files on Amazon S3 and using CloudFront as a CDN.
+
+**Why AWS?**
+-   **Full Control:** Manage every aspect of the infrastructure.
+-   **Scalability & Pricing:** Extremely scalable and can be cost-effective at scale.
+
+**High-Level Steps:**
+1.  **Create an S3 Bucket:** Create a new bucket, unchecking "Block all public access".
+2.  **Upload Build Files:** Upload the entire contents of your local `build` folder to the bucket.
+3.  **Enable Static Website Hosting:** In bucket "Properties", enable static hosting with `index.html` as the index document.
+4.  **Add a Bucket Policy:** In "Permissions", add a policy to make objects public.
+    ```json
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "PublicReadGetObject",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "s3:GetObject",
+                "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/*"
+            }
+        ]
+    }
+    ```
+5.  **Set up CloudFront:** Create a CloudFront distribution with your S3 bucket as the origin. This is necessary for free HTTPS and better performance. Set the "Default root object" to `index.html`.
+6.  **Automate Deployments:** Use a CI/CD tool like GitHub Actions to automatically build and sync the `build` folder to S3 on each push.
+
+---
+
+## ⚠️ Critical Prerequisite: Deploy Your Backend API
+
+Your frontend application will not function without a live backend API. The `REACT_APP_API_URL` you configured above **must** point to a real, deployed server.
+
+**How to Deploy a Simple Node.js/Express Backend:**
+
+Platforms like **Render** or **Heroku** are excellent for deploying APIs.
+
+**Example using Render (Free Tier):**
+1.  **Push to GitHub:** Your backend code should be in its own GitHub repository.
+2.  **Sign Up for Render:** Go to [render.com](https://render.com) and sign up.
+3.  **Create New Web Service:** Click "New" -> "Web Service" and connect your GitHub repo.
+4.  **Configure:**
+    -   **Runtime:** `Node`
+    -   **Build Command:** `npm install`
+    -   **Start Command:** `npm start`
+5.  **Deploy:** Click "Create Web Service". Once live, copy the URL (e.g., `https://my-api.onrender.com`) and use it for your `REACT_APP_API_URL`.
+EOF
+
+echo "DEPLOYMENT.md has been created in your project root with detailed deployment instructions."
+echo "To deploy, choose one of the platforms (Vercel or Netlify are recommended for ease of use) and follow the steps."
+echo "Remember: You must also deploy your backend API and update the REACT_APP_API_URL accordingly!"
+
 # --- FILE: src/components/Layout.js ---
 cat > src/components/Layout.js << 'EOF'
 import React from 'react';
