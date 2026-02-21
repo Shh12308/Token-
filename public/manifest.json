@@ -1,0 +1,16 @@
+{
+  "name": "LUX Crypto & NFT",
+  "short_name": "LUX",
+  "description": "Your advanced Web3 wallet and NFT marketplace.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a1a1a",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
