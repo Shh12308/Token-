@@ -4,10 +4,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { Provider } from "react-redux";
 import { store } from "./store";
 
-import { AuthProvider } from "./contexts/AuthContext";
-import { WalletProvider } from "./contexts/WalletContext";
-import { TradingProvider } from "./contexts/TradingContext";
-import { NavigationProvider } from "./contexts/NavigationContext";
+import { AuthProvider } from "./context/AuthContext";
+import { WalletProvider } from "./context/WalletContext";
+import { TradingProvider } from "./context/TradingContext";
+import { NavigationProvider } from "./context/NavigationContext";
 
 import Loader from "./components/common/Loader";
 import ErrorBoundary from "./components/common/ErrorBoundary";
