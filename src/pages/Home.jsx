@@ -8,7 +8,7 @@ import SendView from '../components/wallet/SendView';
 import ReceiveView from '../components/wallet/ReceiveView';
 import QuickActionsView from '../components/wallet/QuickActionsView'; // New Buy Tab
 
-const DashboardPage = () => {
+const Home = () => {
   const [activeView, setActiveView] = useState('quick-actions'); // Default to the new buy tab
   const selectedNetwork = useSelector((state) => state.wallet.selectedNetwork);
   const balances = useSelector((state) => state.wallet.balances[selectedNetwork] || {});
@@ -50,4 +50,4 @@ const DashboardPage = () => {
   );
 };
 
-export default DashboardPage;
+export default Home;
