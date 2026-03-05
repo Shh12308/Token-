@@ -1,4 +1,4 @@
-// src/pages/auth/SignupPage.jsx
+// src/pages/auth/RegisterPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreateAccountMutation } from '../../services/authApi'; // Mock API hook
@@ -31,8 +31,7 @@ const SeedPhraseGrid = ({ phrase }) => (
   </div>
 );
 
-
-const SignupPage = () => {
+const RegisterPage = () => {
   const navigate = useNavigate();
   const [createAccount, { isLoading, isSuccess }] = useCreateAccountMutation();
 
@@ -167,4 +166,4 @@ const SignupPage = () => {
   );
 };
 
-export default SignupPage;
+export default RegisterPage;
