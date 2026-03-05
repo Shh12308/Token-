@@ -1,40 +1,36 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import { VitePWA } from 'vite-plugin-pwa';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: "autoUpdate",
+      includeAssets: ["favicon.ico"],
+
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/api\.yourbackend\.com\/.*/i, // Your API
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 // 24 hours
-              }
-            }
-          }
-        ]
+        globPatterns: ["**/*.{js,css,html,ico,png,svg}"]
       },
+
       manifest: {
-        name: 'LUX Crypto & NFT',
-        short_name: 'LUX',
-        description: 'Your advanced Web3 wallet and NFT marketplace.',
-        theme_color: '#1a1a1a',
-        background_color: '#ffffff',
-        display: 'standalone',
+        name: "LUX Crypto Wallet",
+        short_name: "LUX",
+        description: "Advanced Web3 wallet and NFT marketplace",
+        theme_color: "#1a1a1a",
+        background_color: "#ffffff",
+        display: "standalone",
+
         icons: [
           {
-            src: 'favicon.ico',
-            sizes: '192x192',
-            type: 'image/png'
+            src: "/pwa-192x192.png",
+            sizes: "192x192",
+            type: "image/png"
+          },
+          {
+            src: "/pwa-512x512.png",
+            sizes: "512x512",
+            type: "image/png"
           }
         ]
       }
