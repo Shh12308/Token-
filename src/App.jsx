@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Provider } from "react-redux";
@@ -19,7 +20,7 @@ import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
 
 /* Lazy Loaded Pages */
-const Dashboard = lazy(() => import("./pages/DashboardPage"));
+const Home = lazy(() => import("./pages/Home")); // <-- Changed from DashboardPage
 const Wallet = lazy(() => import("./screens/WalletScreen"));
 const Swap = lazy(() => import("./views/SwapView"));
 const NFTMarketplace = lazy(() => import("./pages/NFTMarketplacePage"));
@@ -38,7 +39,6 @@ function App() {
               <Router>
                 <ErrorBoundary>
                   <Suspense fallback={<Loader />}>
-                    
                     <Routes>
 
                       {/* Public Routes */}
@@ -54,7 +54,10 @@ function App() {
                           </ProtectedRoute>
                         }
                       >
-                        <Route index element={<Dashboard />} />
+                        {/* Home Page */}
+                        <Route index element={<Home />} />
+
+                        {/* Other Wallet/Feature Pages */}
                         <Route path="wallet" element={<Wallet />} />
                         <Route path="swap" element={<Swap />} />
                         <Route path="nfts" element={<NFTMarketplace />} />
