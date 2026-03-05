@@ -27,7 +27,7 @@ const NFTMarketplace = lazy(() => import("./pages/NFTMarketplacePage"));
 const Login = lazy(() => import("./pages/LoginPage"));
 const Register = lazy(() => import("./pages/RegisterPage"));
 const KYC = lazy(() => import("./pages/KYCPage"));
-const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
 
 function App() {
   return (
