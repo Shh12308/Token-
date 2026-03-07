@@ -11,6 +11,9 @@
   "dependencies": {
     "react-hook-form": "^7.49.0",
     "recharts": "^2.10.0",
+     "@mui/material": "^5.15.0",
+    "@emotion/react": "^11.11.0",
+    "@emotion/styled": "^11.11.0",
     "react": "^18.2.0",
     "lucide-react": "^0.278.0",
     "@reduxjs/toolkit": "^1.9.5",
