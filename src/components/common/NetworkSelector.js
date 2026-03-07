@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Home, Wallet, Settings } from 'lucide-react';
 
-// Define your supported networks
 const networks = [
   {
     name: 'Ethereum',
@@ -30,11 +29,9 @@ const networks = [
 ];
 
 const NetworkSelector = ({ walletProvider }) => {
-  // walletProvider is your custom provider managing JSON-RPC calls
   const [currentNetwork, setCurrentNetwork] = useState(networks[0]);
 
   useEffect(() => {
-    // Optional: detect network from walletProvider if connected
     if (walletProvider?.getChainId) {
       const chainId = walletProvider.getChainId();
       const net = networks.find((n) => n.chainId === chainId);
@@ -42,31 +39,22 @@ const NetworkSelector = ({ walletProvider }) => {
     }
   }, [walletProvider]);
 
-  const handleNetworkChange = async (event) => {
+  const handleNetworkChange = (event) => {
     const network = networks.find((n) => n.name === event.target.value);
     if (!network) return;
 
     setCurrentNetwork(network);
-
-    // Switch your wallet provider to the new network
-    if (walletProvider?.setRpc) {
-      walletProvider.setRpc(network.rpcUrl);
-    }
-
-    // Optional: persist selection
+    walletProvider?.setRpc?.(network.rpcUrl);
     localStorage.setItem('selectedNetwork', network.chainId);
   };
 
   return (
     <div className="network-selector">
-      {/* Icon rendered safely */}
+      {/* Render icon via JSX instead of React.createElement */}
       <span className="network-icon">
-        {currentNetwork?.icon
-          ? React.createElement(currentNetwork.icon)
-          : '🔗'}
+        {currentNetwork?.icon ? <currentNetwork.icon /> : '🔗'}
       </span>
 
-      {/* Network dropdown */}
       <select
         value={currentNetwork.name}
         onChange={handleNetworkChange}
