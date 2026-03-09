@@ -1,6 +1,6 @@
 // src/pages/nft/NftBrowsePage.jsx
 import React, { useState, useMemo, useCallback } from 'react';
-import { useGetNftsQuery } from '../../services/nftApi'; // Mock API hook
+import { getNfts } from '../../services/nftApi';
 import NftCard from '../../components/nft/NftCard';
 import NftCardSkeleton from '../../components/nft/NftCardSkeleton';
 import FiltersSidebar from '../../components/nft/FiltersSidebar';
