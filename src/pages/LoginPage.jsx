@@ -1,9 +1,8 @@
 // src/pages/auth/LoginPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLoginMutation } from '../../services/authApi'; // Mock API hook
-import { useBiometricLoginMutation } from '../../services/authApi'; // Mock Biometric API hook
-import { isBiometricAvailable } from '../../utils/device'; // Mock utility
+import { useLoginMutation, useBiometricLoginMutation } from '../../services/authApi';
+import { isBiometricAvailable } from '../../utils/device';
 
 // Mock Icon Components - replace with your icon library
 const IconFingerprint = () => <span className="icon">👆</span>;
