@@ -32,3 +32,5 @@ const NftCard = ({ nft, onClick, onBuyClick }) => {
     </div>
   );
 };
+
+export default NftCard;
