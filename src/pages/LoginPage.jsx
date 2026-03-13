@@ -1,10 +1,9 @@
-// src/pages/auth/LoginPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLoginMutation, useBiometricLoginMutation } from '../../services/authApi';
-import { isBiometricAvailable } from '../../utils/device';
+import { useLoginMutation, useBiometricLoginMutation } from '@/services/authService';
+import { isBiometricAvailable } from '@/utils/device';
 
-// Mock Icon Components - replace with your icon library
+// Mock Icon Components
 const IconFingerprint = () => <span className="icon">👆</span>;
 const IconPasscode = () => <span className="icon">🔢</span>;
 const IconKey = () => <span className="icon">🔑</span>;
@@ -37,27 +36,22 @@ const LoginPage = () => {
 
   const handlePasscodeSubmit = (e) => {
     e.preventDefault();
-    if (passcode.length === 6) {
-      handleLogin('passcode', passcode);
-    }
+    if (passcode.length === 6) handleLogin('passcode', passcode);
   };
 
   const handlePassphraseSubmit = (e) => {
     e.preventDefault();
     const words = passphrase.trim().split(/\s+/);
-    if (words.length === 12) {
-      handleLogin('passphrase', passphrase.trim());
-    } else {
-      setError('A valid passphrase must contain exactly 12 words.');
-    }
+    if (words.length === 12) handleLogin('passphrase', passphrase.trim());
+    else setError('A valid passphrase must contain exactly 12 words.');
   };
-  
+
   const handleBiometricClick = async () => {
     setError('');
     try {
       await biometricLogin().unwrap();
       navigate('/app/dashboard');
-    } catch (err) {
+    } catch {
       setError('Biometric authentication failed. Please use another method.');
     }
   };
@@ -69,7 +63,6 @@ const LoginPage = () => {
     setError('');
   };
 
-  // --- Initial View: Choose Login Method ---
   if (!loginMethod) {
     return (
       <div className="login-page">
@@ -101,7 +94,6 @@ const LoginPage = () => {
     );
   }
 
-  // --- Specific Login Method View ---
   return (
     <div className="login-page">
       <div className="login-card">
@@ -109,7 +101,7 @@ const LoginPage = () => {
           <button className="back-button" onClick={resetState}>← Back</button>
           <h2>Log In with {loginMethod.charAt(0).toUpperCase() + loginMethod.slice(1)}</h2>
         </div>
-        
+
         <form className="card-body" onSubmit={loginMethod === 'passcode' ? handlePasscodeSubmit : handlePassphraseSubmit}>
           {error && <div className="error-message">{error}</div>}
 
@@ -121,7 +113,7 @@ const LoginPage = () => {
                 placeholder="Enter 6-digit passcode"
                 value={passcode}
                 onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))}
-                maxLength="6"
+                maxLength={6}
                 autoFocus
                 required
               />
