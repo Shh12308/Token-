@@ -1,11 +1,13 @@
 // src/pages/auth/RegisterPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCreateAccountMutation } from '../../services/authApi'; // Mock API hook
-import { generateSeedPhrase } from '../../utils/wallet'; // Mock utility function
-import { copyToClipboard } from '../../utils/helpers'; // Mock utility function
+import { generateSeedPhrase } from '../../utils/wallet';
+import { copyToClipboard } from '../../utils/helpers';
 
-// Sub-component for the progress bar
+// LocalStorage helpers
+const STORAGE_KEY = 'cryptoBeanAccount';
+const saveAccount = (account) => localStorage.setItem(STORAGE_KEY, JSON.stringify(account));
+
 const ProgressBar = ({ step }) => (
   <div className="progress-bar">
     <div className={`progress-step ${step >= 1 ? 'active' : ''}`}>1. Identity</div>
@@ -14,7 +16,6 @@ const ProgressBar = ({ step }) => (
   </div>
 );
 
-// Sub-component for displaying the seed phrase grid
 const SeedPhraseGrid = ({ phrase }) => (
   <div className="seed-phrase-grid">
     {phrase.map((word, index) => (
@@ -33,46 +34,32 @@ const SeedPhraseGrid = ({ phrase }) => (
 
 const RegisterPage = () => {
   const navigate = useNavigate();
-  const [createAccount, { isLoading, isSuccess }] = useCreateAccountMutation();
-
   const [currentStep, setCurrentStep] = useState(1);
   const [email, setEmail] = useState('');
   const [passcode, setPasscode] = useState('');
   const [seedPhrase, setSeedPhrase] = useState([]);
   const [isConfirmedSaved, setIsConfirmedSaved] = useState(false);
 
-  // Generate seed phrase when we reach step 3
+  // Generate seed phrase when reaching step 3
   useEffect(() => {
     if (currentStep === 3 && seedPhrase.length === 0) {
-      setSeedPhrase(generateSeedPhrase()); // e.g., ["abandon", "ability", ...]
+      setSeedPhrase(generateSeedPhrase());
     }
   }, [currentStep, seedPhrase.length]);
 
   const handleNext = () => {
-    if (currentStep < 3) {
-      setCurrentStep(currentStep + 1);
-    }
+    if (currentStep < 3) setCurrentStep(currentStep + 1);
   };
 
-  const handleCreateAccount = async () => {
-    if (!isConfirmedSaved) return;
+  const handleCreateAccount = () => {
+    if (!isConfirmedSaved || passcode.length !== 6) return;
 
-    try {
-      await createAccount({ email, passcode, seedPhrase }).unwrap();
-      // On success, the Redux store will be updated and the user will be logged in
-      // The main layout will handle redirecting to the dashboard
-    } catch (error) {
-      console.error("Failed to create account:", error);
-      // Handle error display to the user
-    }
+    // Save account to localStorage
+    saveAccount({ email, passcode, seedPhrase });
+
+    // Redirect to login (or dashboard)
+    navigate('/auth/login');
   };
-
-  // Redirect to dashboard on successful signup
-  useEffect(() => {
-    if (isSuccess) {
-      navigate('/app/dashboard');
-    }
-  }, [isSuccess, navigate]);
 
   return (
     <div className="signup-page">
@@ -83,10 +70,10 @@ const RegisterPage = () => {
         </div>
 
         <div className="card-body">
-          {/* --- STEP 1: IDENTITY --- */}
+          {/* STEP 1: Identity */}
           {currentStep === 1 && (
             <div className="auth-step">
-              <p>Let's start with your email or phone number.</p>
+              <p>Enter your email or phone number.</p>
               <input
                 type="email"
                 className="input-primary"
@@ -97,14 +84,14 @@ const RegisterPage = () => {
               <button
                 className="button-primary"
                 onClick={handleNext}
-                disabled={!email.includes('@')} // Simple validation
+                disabled={!email.includes('@')}
               >
                 Continue
               </button>
             </div>
           )}
 
-          {/* --- STEP 2: SECURITY --- */}
+          {/* STEP 2: Passcode */}
           {currentStep === 2 && (
             <div className="auth-step">
               <p>Create a 6-digit passcode. You'll use this to log in quickly.</p>
@@ -114,7 +101,7 @@ const RegisterPage = () => {
                 placeholder="Enter 6-digit passcode"
                 maxLength="6"
                 value={passcode}
-                onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))} // Only numbers
+                onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))}
               />
               <button
                 className="button-primary"
@@ -126,17 +113,19 @@ const RegisterPage = () => {
             </div>
           )}
 
-          {/* --- STEP 3: SECRET KEY --- */}
+          {/* STEP 3: Secret Phrase */}
           {currentStep === 3 && (
             <div className="auth-step seed-phrase-step">
               <div className="warning-box">
                 <strong>⚠️ This is your master key.</strong>
                 <p>Save it somewhere safe and private. We cannot recover it for you.</p>
               </div>
-              
-              <SeedPhraseGrid phrase={seedPhrase} />
 
-              <button className="button-secondary" onClick={() => copyToClipboard(seedPhrase.join(' '))}>
+              <SeedPhraseGrid phrase={seedPhrase} />
+              <button
+                className="button-secondary"
+                onClick={() => copyToClipboard(seedPhrase.join(' '))}
+              >
                 Copy Entire Phrase
               </button>
 
@@ -154,9 +143,9 @@ const RegisterPage = () => {
               <button
                 className="button-primary button-large"
                 onClick={handleCreateAccount}
-                disabled={!isConfirmedSaved || isLoading}
+                disabled={!isConfirmedSaved || passcode.length !== 6}
               >
-                {isLoading ? 'Creating Account...' : 'Create Account'}
+                Create Account
               </button>
             </div>
           )}
