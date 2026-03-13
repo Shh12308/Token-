@@ -4,9 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { generateSeedPhrase } from '../../utils/wallet';
 import { copyToClipboard } from '../../utils/helpers';
 
-// LocalStorage helpers
-const STORAGE_KEY = 'cryptoBeanAccount';
-const saveAccount = (account) => localStorage.setItem(STORAGE_KEY, JSON.stringify(account));
+const BACKEND_URL = 'https://api.yourdomain.com';
 
 const ProgressBar = ({ step }) => (
   <div className="progress-bar">
@@ -39,8 +37,9 @@ const RegisterPage = () => {
   const [passcode, setPasscode] = useState('');
   const [seedPhrase, setSeedPhrase] = useState([]);
   const [isConfirmedSaved, setIsConfirmedSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  // Generate seed phrase when reaching step 3
   useEffect(() => {
     if (currentStep === 3 && seedPhrase.length === 0) {
       setSeedPhrase(generateSeedPhrase());
@@ -51,14 +50,30 @@ const RegisterPage = () => {
     if (currentStep < 3) setCurrentStep(currentStep + 1);
   };
 
-  const handleCreateAccount = () => {
+  const handleCreateAccount = async () => {
     if (!isConfirmedSaved || passcode.length !== 6) return;
+    setLoading(true);
+    setError('');
 
-    // Save account to localStorage
-    saveAccount({ email, passcode, seedPhrase });
+    try {
+      const response = await fetch(`${BACKEND_URL}/accounts/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, passcode, seedPhrase })
+      });
+      const data = await response.json();
 
-    // Redirect to login (or dashboard)
-    navigate('/auth/login');
+      if (!response.ok) throw new Error(data.message || 'Registration failed');
+
+      // Optionally store account locally for biometrics login
+      localStorage.setItem('cryptoBeanAccount', JSON.stringify({ email, passcode, seedPhrase }));
+
+      navigate('/auth/login');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -70,7 +85,6 @@ const RegisterPage = () => {
         </div>
 
         <div className="card-body">
-          {/* STEP 1: Identity */}
           {currentStep === 1 && (
             <div className="auth-step">
               <p>Enter your email or phone number.</p>
@@ -81,17 +95,12 @@ const RegisterPage = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-              <button
-                className="button-primary"
-                onClick={handleNext}
-                disabled={!email.includes('@')}
-              >
+              <button className="button-primary" onClick={handleNext} disabled={!email.includes('@')}>
                 Continue
               </button>
             </div>
           )}
 
-          {/* STEP 2: Passcode */}
           {currentStep === 2 && (
             <div className="auth-step">
               <p>Create a 6-digit passcode. You'll use this to log in quickly.</p>
@@ -99,21 +108,16 @@ const RegisterPage = () => {
                 type="password"
                 className="input-primary input-passcode"
                 placeholder="Enter 6-digit passcode"
-                maxLength="6"
+                maxLength={6}
                 value={passcode}
                 onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))}
               />
-              <button
-                className="button-primary"
-                onClick={handleNext}
-                disabled={passcode.length !== 6}
-              >
+              <button className="button-primary" onClick={handleNext} disabled={passcode.length !== 6}>
                 Next
               </button>
             </div>
           )}
 
-          {/* STEP 3: Secret Phrase */}
           {currentStep === 3 && (
             <div className="auth-step seed-phrase-step">
               <div className="warning-box">
@@ -122,31 +126,22 @@ const RegisterPage = () => {
               </div>
 
               <SeedPhraseGrid phrase={seedPhrase} />
-              <button
-                className="button-secondary"
-                onClick={() => copyToClipboard(seedPhrase.join(' '))}
-              >
+              <button className="button-secondary" onClick={() => copyToClipboard(seedPhrase.join(' '))}>
                 Copy Entire Phrase
               </button>
 
               <div className="confirmations">
                 <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={isConfirmedSaved}
-                    onChange={(e) => setIsConfirmedSaved(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={isConfirmedSaved} onChange={(e) => setIsConfirmedSaved(e.target.checked)} />
                   I have securely saved my secret phrase.
                 </label>
               </div>
 
-              <button
-                className="button-primary button-large"
-                onClick={handleCreateAccount}
-                disabled={!isConfirmedSaved || passcode.length !== 6}
-              >
-                Create Account
+              <button className="button-primary button-large" onClick={handleCreateAccount} disabled={!isConfirmedSaved || loading}>
+                {loading ? 'Creating Account...' : 'Create Account'}
               </button>
+
+              {error && <div className="error-message">{error}</div>}
             </div>
           )}
         </div>
