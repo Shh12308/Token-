@@ -13,22 +13,22 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,ico,png,svg}"]
       },
       manifest: {
-  name: "CryptoBean",
-  short_name: "CryptoBean",
-  description: "Advanced Web3 wallet and NFT marketplace",
-  theme_color: "#1a1a1a",
-  background_color: "#ffffff",
-  display: "standalone",
-  icons: [
-    { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
-    { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png" }
-  ]
-}
+        name: "CryptoBean",
+        short_name: "CryptoBean",
+        description: "Advanced Web3 wallet and NFT marketplace",
+        theme_color: "#1a1a1a",
+        background_color: "#ffffff",
+        display: "standalone",
+        icons: [
+          { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
+          { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png" }
+        ]
+      }
     })
   ],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src")  // Add this
+      "@": path.resolve(__dirname, "./src") // Allows imports like "@/services/authApi"
     }
   }
 });
