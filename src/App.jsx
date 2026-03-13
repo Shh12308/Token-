@@ -24,8 +24,8 @@ const Home = lazy(() => import("./pages/Home")); // <-- Changed from DashboardPa
 const Wallet = lazy(() => import("./screens/WalletScreen"));
 const Swap = lazy(() => import("./views/SwapView"));
 const NFTMarketplace = lazy(() => import("./pages/NFTMarketplacePage"));
-const Login = lazy(() => import("./pages/LoginPage"));
-const Register = lazy(() => import("./pages/RegisterPage"));
+const Login = lazy(() => import("./pages/auth/LoginPage"));
+const Register = lazy(() => import("./pages/auth/RegisterPage"));
 const KYC = lazy(() => import("./pages/KYCPage"));
 const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
 
