@@ -1,11 +1,11 @@
 // src/pages/nft/NftBrowsePage.jsx
 import React, { useState, useMemo, useCallback } from 'react';
 import { getNfts } from '../services/nftApi';
-import NftCard from '../../components/nft/NftCard';
-import NftCardSkeleton from '../../components/nft/NftCardSkeleton';
-import FiltersSidebar from '../../components/nft/FiltersSidebar';
-import NftDetailsModal from '../../components/nft/NftDetailsModal';
-import PurchaseModal from '../../components/nft/PurchaseModal';
+import NftCard from '../../components/nft/NftCard';                 // src/components/nft/NftCard.jsx
+import NftCardSkeleton from '../../components/nft/NftCardSkeleton'; // src/components/nft/NftCardSkeleton.jsx
+import FiltersSidebar from '../../components/nft/FiltersSidebar';   // src/components/nft/FiltersSidebar.jsx
+import NftDetailsModal from '../../components/nft/NftDetailsModal'; // src/components/nft/NftDetailsModal.jsx
+import PurchaseModal from '../../components/nft/PurchaseModal'; 
 
 const NftBrowsePage = () => {
   // --- State ---
