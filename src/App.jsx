@@ -13,7 +13,7 @@ import { AnimatePresence } from 'framer-motion';
 // Import Components
 import SplashScreen from './components/SplashScreen';
 import Onboarding from './components/Onboarding';
-import Dashboard from './pages/Dashboard';
+import Home from './pages/Home';
 import Wallet from './pages/Wallet';
 import Settings from './pages/Settings';
 import CryptoSticks from './pages/CryptoSticks';
@@ -61,11 +61,11 @@ const App = () => {
                     <Navigate to="/onboarding" replace /> : 
                     isLocked ? 
                     <Navigate to="/lock" replace /> : 
-                    <Navigate to="/dashboard" replace />
+                    <Navigate to="/home" replace />
                   } />
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/lock" element={<LockScreen />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/home" element={<Home />} />
                   <Route path="/wallet" element={<Wallet />} />
                   <Route path="/crypto-sticks" element={<CryptoSticks />} />
                   <Route path="/search" element={<Search />} />
