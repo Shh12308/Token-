@@ -16,6 +16,7 @@
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
     "react": "^18.2.0",
+    "styled-components": "^6.0.9",
     "lucide-react": "^0.278.0",
     "@reduxjs/toolkit": "^1.9.5",
     "react-dom": "^18.2.0",
