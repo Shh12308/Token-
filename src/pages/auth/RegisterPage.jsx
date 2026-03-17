@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { generateSeedPhrase } from '../../utils/wallet';
 import { copyToClipboard } from '../../utils/helpers';
+import { deriveKeyFromPasscode, encryptData } from '../../utils/crypto'; // new secure crypto utils
+import * as argon2 from 'argon2-browser';
 
 const BACKEND_URL = 'https://api.yourdomain.com';
 
@@ -56,17 +58,30 @@ const RegisterPage = () => {
     setError('');
 
     try {
+      // 1️⃣ Derive encryption key from passcode
+      const key = await deriveKeyFromPasscode(passcode);
+
+      // 2️⃣ Encrypt seed phrase locally
+      const encryptedSeed = await encryptData(seedPhrase.join(' '), key);
+
+      // 3️⃣ Store encrypted seed locally (never send raw seed to backend)
+      localStorage.setItem('cryptoBeanAccount', JSON.stringify({
+        email,
+        encryptedSeed
+      }));
+
+      // 4️⃣ Send only metadata to backend
       const response = await fetch(`${BACKEND_URL}/accounts/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, passcode, seedPhrase })
+        body: JSON.stringify({
+          email,
+          passwordHash: await argon2.hash({ pass: passcode }) // securely hash password
+        })
       });
+
       const data = await response.json();
-
       if (!response.ok) throw new Error(data.message || 'Registration failed');
-
-      // Optionally store account locally for biometrics login
-      localStorage.setItem('cryptoBeanAccount', JSON.stringify({ email, passcode, seedPhrase }));
 
       navigate('/auth/login');
     } catch (err) {
