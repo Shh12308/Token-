@@ -11,15 +11,6 @@ import {
 } from 'react-icons/fi';
 import { updateBalance } from '../store/slices/walletSlice';
 import { fetchMarketData } from '../store/slices/marketSlice';
-import { 
-  DashboardContainer, 
-  WalletCard, 
-  QuickActions, 
-  MarketOverview,
-  RecentTransactions,
-  NetworkStatus,
-  AnimatedBackground
-} from '../components/dashboard';
 
 const Home = () => {
   const navigate = useNavigate();
