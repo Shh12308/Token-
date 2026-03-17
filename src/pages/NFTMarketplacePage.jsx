@@ -7,7 +7,7 @@ import FiltersSidebar from '../../components/nft/FiltersSidebar';   // src/compo
 import NftDetailsModal from '../../components/nft/NftDetailsModal'; // src/components/nft/NftDetailsModal.jsx
 import PurchaseModal from '../../components/nft/PurchaseModal'; 
 
-const NftBrowsePage = () => {
+const NftMarketplace = () => {
   // --- State ---
   const [filters, setFilters] = useState({
     status: 'all', // 'all', 'buy_now', 'auction'
@@ -154,4 +154,4 @@ const NftBrowsePage = () => {
   );
 };
 
-export default NftBrowsePage;
+export default NftMarketplace;
