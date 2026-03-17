@@ -1,99 +1,61 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+// src/contexts/Web3Context.jsx
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import { getLocalAccount } from '../utils/storage'; // get encryptedSeed from localStorage
+import { decryptData } from '../utils/crypto';
+import { ethers } from 'ethers'; // web3 provider
 
 const Web3Context = createContext();
 
-const initialState = {
-  isConnected: false,
-  account: null,
-  balance: '0',
-  network: 'ethereum',
-  provider: null,
-  contracts: {},
-  loading: false,
-  error: null
-};
-
-const web3Reducer = (state, action) => {
-  switch (action.type) {
-    case 'CONNECT_WALLET':
-      return {
-        ...state,
-        isConnected: true,
-        account: action.payload.account,
-        balance: action.payload.balance,
-        provider: action.payload.provider,
-        loading: false
-      };
-    case 'DISCONNECT_WALLET':
-      return {
-        ...state,
-        isConnected: false,
-        account: null,
-        balance: '0',
-        provider: null,
-        contracts: {}
-      };
-    case 'SET_LOADING':
-      return { ...state, loading: action.payload };
-    case 'SET_ERROR':
-      return { ...state, error: action.payload, loading: false };
-    case 'UPDATE_BALANCE':
-      return { ...state, balance: action.payload };
-    case 'SWITCH_NETWORK':
-      return { ...state, network: action.payload };
-    default:
-      return state;
-  }
-};
-
 export const Web3Provider = ({ children }) => {
-  const [state, dispatch] = useReducer(web3Reducer, initialState);
+  const [account, setAccount] = useState(null); // { email, encryptedSeed }
+  const [seed, setSeed] = useState(null);       // decrypted seed in memory
+  const [wallet, setWallet] = useState(null);   // ethers.js Wallet instance
+  const [provider, setProvider] = useState(null); // ethers provider
+  const [network, setNetwork] = useState(null);
 
-  const connectWallet = async () => {
-    try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      
-      // Simulate wallet connection
-      setTimeout(() => {
-        const mockAccount = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb';
-        const mockBalance = '10.5';
-        
-        dispatch({
-          type: 'CONNECT_WALLET',
-          payload: {
-            account: mockAccount,
-            balance: mockBalance,
-            provider: { connected: true }
-          }
-        });
-      }, 1500);
-    } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: error.message });
-    }
+  useEffect(() => {
+    const localAcc = getLocalAccount();
+    if (localAcc) setAccount(localAcc);
+
+    // optionally setup default provider
+    const ethProvider = new ethers.providers.InfuraProvider('homestead', process.env.REACT_APP_INFURA_KEY);
+    setProvider(ethProvider);
+  }, []);
+
+  // decrypt seed with passcode or biometric key
+  const unlockWallet = async (passcodeOrKey) => {
+    if (!account) throw new Error('No local account found.');
+    const decryptedSeed = await decryptData(account.encryptedSeed, passcodeOrKey);
+    setSeed(decryptedSeed);
+
+    const walletInstance = ethers.Wallet.fromMnemonic(decryptedSeed).connect(provider);
+    setWallet(walletInstance);
+
+    const net = await walletInstance.provider.getNetwork();
+    setNetwork(net);
+    return walletInstance;
   };
 
-  const disconnectWallet = () => {
-    dispatch({ type: 'DISCONNECT_WALLET' });
-  };
-
-  const value = {
-    ...state,
-    connectWallet,
-    disconnectWallet,
-    dispatch
+  const logout = () => {
+    setSeed(null);
+    setWallet(null);
+    setNetwork(null);
   };
 
   return (
-    <Web3Context.Provider value={value}>
+    <Web3Context.Provider value={{
+      account,
+      seed,
+      wallet,
+      provider,
+      network,
+      unlockWallet,
+      logout,
+    }}>
       {children}
     </Web3Context.Provider>
   );
 };
 
-export const useWeb3 = () => {
-  const context = useContext(Web3Context);
-  if (!context) {
-    throw new Error('useWeb3 must be used within a Web3Provider');
-  }
-  return context;
-};
+// Hook to use in components
+export const useWeb3 = () => useContext(Web3Context);
