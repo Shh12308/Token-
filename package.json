@@ -9,36 +9,51 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react-hook-form": "^7.49.0",
-    "recharts": "^2.10.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+
+    "react-router-dom": "^6.14.1",
+    "react-redux": "^8.1.3",
+    "@reduxjs/toolkit": "^1.9.5",
+
     "ethers": "^6.7.0",
-    "react-icons": "^4.12.0",
+
+    "axios": "^1.6.0",
+
     "framer-motion": "^10.12.16",
-     "@mui/material": "^5.15.0",
+
+    "@mui/material": "^5.15.0",
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
-    "react": "^18.2.0",
+
     "styled-components": "^6.0.9",
+
+    "react-icons": "^4.12.0",
     "lucide-react": "^0.278.0",
-    "@reduxjs/toolkit": "^1.9.5",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.8.1",
-    "ethers": "^5.7.2", 
-    "react-redux": "^8.x",
-    "axios": "^1.3.4",
-    "react-hot-toast": "^2.4.0",
+    "@heroicons/react": "^2.0.16",
+
     "@headlessui/react": "^1.7.13",
-    "@heroicons/react": "^2.0.16"
+
+    "react-hook-form": "^7.49.0",
+
+    "react-hot-toast": "^2.4.0",
+
+    "recharts": "^2.10.0",
+
+    "react-chartjs-2": "^5.2.0",
+    "chart.js": "^4.4.0"
   },
   "devDependencies": {
-    "@types/react": "^18.0.28",
-    "@types/react-dom": "^18.0.11",
-    "@vitejs/plugin-react": "^3.1.0",
-    "autoprefixer": "^10.4.14",
+    "vite": "^4.5.14",
+    "@vitejs/plugin-react": "^3.2.0",
+
+    "tailwindcss": "^3.3.0",
     "postcss": "^8.4.21",
-    "tailwindcss": "^3.2.7",
-    "vite": "^4.1.0",
-    "vite-plugin-pwa": "^0.14.4"
+    "autoprefixer": "^10.4.14",
+
+    "vite-plugin-pwa": "^0.14.4",
+
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.11"
   }
 }
-
