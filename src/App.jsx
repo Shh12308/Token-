@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store';
-import { Web3Provider } from './contexts/Web3Context';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { NotificationProvider } from './contexts/NotificationContext';
+import { Web3Provider } from './context/Web3Context';
+import { ThemeProvider } from './context/ThemeContext';
+import { NotificationProvider } from './context/NotificationContext';
 import GlobalStyles from './styles/GlobalStyles';
 import { AnimatePresence } from 'framer-motion';
 
