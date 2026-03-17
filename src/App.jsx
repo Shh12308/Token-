@@ -15,7 +15,7 @@ import SplashScreen from './components/SplashScreen';
 import Onboarding from './components/Onboarding';
 import Home from './pages/Home';
 import Wallet from './pages/Wallet';
-import Settings from './pages/Settings';
+import SettingsPage from './pages/SettingsPage';
 import CryptoSticks from './pages/CryptoSticks';
 import Search from './pages/Search';
 import NFTMarketplace from './pages/NFTMarketplace';
@@ -73,7 +73,7 @@ const App = () => {
                   <Route path="/defi" element={<DeFi />} />
                   <Route path="/activity" element={<Activity />} />
                   <Route path="/browser" element={<Browser />} />
-                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/security" element={<Security />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
