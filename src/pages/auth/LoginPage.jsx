@@ -3,29 +3,26 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isBiometricAvailable } from '../../utils/device';
 import { copyToClipboard } from '../../utils/helpers';
+import { decryptData } from '../../utils/crypto';
 
-const BACKEND_URL = 'https://api.yourdomain.com';
 const STORAGE_KEY = 'cryptoBeanAccount';
 const getLocalAccount = () => {
   const data = localStorage.getItem(STORAGE_KEY);
   return data ? JSON.parse(data) : null;
 };
 
-const IconFingerprint = () => <span className="icon">👆</span>;
-const IconPasscode = () => <span className="icon">🔢</span>;
-const IconKey = () => <span className="icon">🔑</span>;
-
 const LoginPage = () => {
   const navigate = useNavigate();
   const [account, setAccount] = useState(null);
   const [loginMethod, setLoginMethod] = useState(null);
   const [passcode, setPasscode] = useState('');
+  const [seed, setSeed] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     const acc = getLocalAccount();
-    setAccount(acc);
+    if (acc) setAccount(acc);
   }, []);
 
   const handlePasscodeLogin = async () => {
@@ -36,18 +33,13 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const response = await fetch(`${BACKEND_URL}/accounts/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: account.email, passcode })
-      });
+      // 🔐 Decrypt local encrypted seed using passcode
+      const decryptedSeed = await decryptData(account.encryptedSeed, passcode);
+      setSeed(decryptedSeed); // use only in memory
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Login failed');
-
-      navigate('/app/dashboard');
+      navigate('/app/dashboard'); // proceed to app
     } catch (err) {
-      setError(err.message);
+      setError('Invalid passcode');
     } finally {
       setLoading(false);
     }
@@ -61,19 +53,14 @@ const LoginPage = () => {
     setError('');
 
     try {
-      // Replace with real WebAuthn / biometrics logic
-      const response = await fetch(`${BACKEND_URL}/accounts/biometric-login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: account.email })
-      });
-      const data = await response.json();
-
-      if (!response.ok) throw new Error(data.message || 'Biometric login failed');
+      // 🔐 Unlock seed locally via biometrics (placeholder)
+      // You need real WebAuthn / platform biometric integration here
+      const decryptedSeed = await decryptData(account.encryptedSeed, 'biometricKey'); 
+      setSeed(decryptedSeed);
 
       navigate('/app/dashboard');
     } catch (err) {
-      setError(err.message);
+      setError('Biometric login failed');
     } finally {
       setLoading(false);
     }
@@ -83,6 +70,7 @@ const LoginPage = () => {
     setLoginMethod(null);
     setPasscode('');
     setError('');
+    setSeed('');
   };
 
   if (!loginMethod) {
@@ -97,17 +85,14 @@ const LoginPage = () => {
           <div className="card-body login-options-grid">
             {isBiometricAvailable() && (
               <button className="option-card" onClick={handleBiometricLogin} disabled={loading}>
-                <IconFingerprint />
-                <span>Biometrics</span>
+                👆<span>Biometrics</span>
               </button>
             )}
             <button className="option-card" onClick={() => setLoginMethod('passcode')} disabled={loading}>
-              <IconPasscode />
-              <span>Passcode</span>
+              🔢<span>Passcode</span>
             </button>
             <button className="option-card" onClick={() => setLoginMethod('passphrase')} disabled={loading}>
-              <IconKey />
-              <span>Secret Phrase</span>
+              🔑<span>Secret Phrase</span>
             </button>
           </div>
           {error && <div className="error-message">{error}</div>}
@@ -152,15 +137,12 @@ const LoginPage = () => {
             <div className="input-group">
               <textarea
                 className="input-primary"
-                value={account?.seedPhrase.join(' ') || ''}
+                value={seed}
                 readOnly
                 rows={3}
-                onClick={() => copyToClipboard(account?.seedPhrase.join(' '))}
+                onClick={() => copyToClipboard(seed)}
               />
-              <button
-                className="button-secondary"
-                onClick={() => copyToClipboard(account?.seedPhrase.join(' '))}
-              >
+              <button className="button-secondary" onClick={() => copyToClipboard(seed)}>
                 Copy Secret Phrase
               </button>
             </div>
