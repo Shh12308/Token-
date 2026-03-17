@@ -1,0 +1,26 @@
+.splash-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #8b5cf6, #4f46e5);
+  color: white;
+  font-family: 'Segoe UI', sans-serif;
+  text-align: center;
+}
+
+.splash-logo {
+  font-size: 5rem;
+  margin-bottom: 1rem;
+}
+
+.splash-title {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.splash-subtitle {
+  font-size: 1.2rem;
+  opacity: 0.9;
+}
