@@ -1,11 +1,12 @@
 // src/components/wallet/ReceiveView.jsx
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, TextField, IconButton } from '@mui/material';
+import { Box, Typography, TextField, IconButton, Snackbar, Alert } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import QRCode from 'qrcode.react';
+import QRCode from 'react-qr-code';
 
 const ReceiveView = ({ walletProvider }) => {
   const [address, setAddress] = useState('');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const fetchAddress = async () => {
@@ -25,7 +26,7 @@ const ReceiveView = ({ walletProvider }) => {
   const copyAddress = () => {
     if (address) {
       navigator.clipboard.writeText(address);
-      alert('Address copied!');
+      setCopied(true);
     }
   };
 
@@ -55,7 +56,16 @@ const ReceiveView = ({ walletProvider }) => {
         Receive Crypto
       </Typography>
 
-      <QRCode value={address} size={150} bgColor="#1e1e1e" fgColor="#fff" />
+      <Box
+        sx={{
+          display: 'inline-block',
+          backgroundColor: '#1e1e1e',
+          padding: 2,
+          borderRadius: 2,
+        }}
+      >
+        <QRCode value={address} size={150} bgColor="#1e1e1e" fgColor="#fff" />
+      </Box>
 
       <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
         <TextField
@@ -69,6 +79,17 @@ const ReceiveView = ({ walletProvider }) => {
           <ContentCopyIcon />
         </IconButton>
       </Box>
+
+      <Snackbar
+        open={copied}
+        autoHideDuration={2000}
+        onClose={() => setCopied(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setCopied(false)} severity="success" sx={{ width: '100%' }}>
+          Address copied!
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
