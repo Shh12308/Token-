@@ -1,10 +1,11 @@
 // src/contexts/Web3Context.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { BrowserProvider, Wallet, JsonRpcProvider } from 'ethers';
+import { Wallet, ethers } from 'ethers'; // fixed ethers import
 import { getLocalAccount } from '../utils/storage';
 import { decryptData } from '../utils/crypto';
 
-const Web3Context = createContext();
+// Named export so DeFi.jsx can import it
+export const Web3Context = createContext();
 
 export const Web3Provider = ({ children }) => {
   const [account, setAccount] = useState(null);
@@ -60,4 +61,5 @@ export const Web3Provider = ({ children }) => {
   );
 };
 
+// Hook for consuming context
 export const useWeb3 = () => useContext(Web3Context);
