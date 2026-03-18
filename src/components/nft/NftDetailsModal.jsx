@@ -39,3 +39,5 @@ const NftDetailsModal = ({ nft, onClose, onPurchaseClick }) => {
     </div>
   );
 };
+
+export default NftDetailsModal;
