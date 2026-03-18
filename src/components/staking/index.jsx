@@ -5,6 +5,7 @@ import { FiArrowUpRight, FiArrowDownLeft, FiZap, FiClock } from 'react-icons/fi'
 import { useSelector, useDispatch } from 'react-redux';
 import { updateBalance } from '../../store/slices/walletSlice';
 import { fetchMarketData } from '../../store/slices/marketSlice';
+export { default as YieldCalculator } from './YieldCalculator';
 
 const stakingOptions = [
   { id: 'eth', name: 'Ethereum', symbol: 'ETH', apr: 5.2 },
