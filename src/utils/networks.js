@@ -1,7 +1,8 @@
 // src/utils/networks.js
 
-export const NETWORKS = {
-  ethereum: {
+// 🔥 MAIN ARRAY (LOWERCASE as requested)
+export const networks = [
+  {
     id: 'ethereum',
     chainId: 1,
     name: 'Ethereum Mainnet',
@@ -13,7 +14,7 @@ export const NETWORKS = {
     blockExplorer: 'https://etherscan.io'
   },
 
-  polygon: {
+  {
     id: 'polygon',
     chainId: 137,
     name: 'Polygon',
@@ -25,7 +26,7 @@ export const NETWORKS = {
     blockExplorer: 'https://polygonscan.com'
   },
 
-  bsc: {
+  {
     id: 'bsc',
     chainId: 56,
     name: 'BNB Smart Chain',
@@ -37,7 +38,7 @@ export const NETWORKS = {
     blockExplorer: 'https://bscscan.com'
   },
 
-  arbitrum: {
+  {
     id: 'arbitrum',
     chainId: 42161,
     name: 'Arbitrum One',
@@ -47,23 +48,26 @@ export const NETWORKS = {
     ],
     blockExplorer: 'https://arbiscan.io'
   }
-};
+];
 
-export const DEFAULT_NETWORK = NETWORKS.ethereum;
+// ✅ DEFAULT NETWORK
+export const DEFAULT_NETWORK = networks[0];
 
-// Helper: get RPC (with fallback)
+// -------------------------
+// HELPERS
+// -------------------------
+
+// Get RPC URL
 export const getRpcUrl = (network) => {
-  return network.rpcUrls[0];
+  return network.rpcUrls?.[0];
 };
 
-// Helper: get network by chainId
+// Get network by chainId
 export const getNetworkByChainId = (chainId) => {
-  return Object.values(NETWORKS).find(
-    (net) => net.chainId === chainId
-  );
+  return networks.find((net) => net.chainId === chainId);
 };
 
-// Helper: format chainId for MetaMask
+// Convert chainId → hex (MetaMask)
 export const toHexChainId = (chainId) => {
   return '0x' + chainId.toString(16);
 };
