@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Button, TextField, Typography, MenuItem, IconButton } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { networks } from '../../utils/networks';
-import { ethers } from 'ethers';
+import { Wallet, getDefaultProvider } from 'ethers';
 import toast from 'react-hot-toast';
 
 const SendView = ({ walletProvider }) => {
