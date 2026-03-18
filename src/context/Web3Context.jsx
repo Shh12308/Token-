@@ -1,10 +1,10 @@
 // src/contexts/Web3Context.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Wallet, ethers } from 'ethers'; // fixed ethers import
+import { ethers } from 'ethers'; // ✅ fixed import
 import { getLocalAccount } from '../utils/storage';
 import { decryptData } from '../utils/crypto';
 
-// Named export so DeFi.jsx can import it
+// Named export so other components can consume it
 export const Web3Context = createContext();
 
 export const Web3Provider = ({ children }) => {
@@ -18,23 +18,29 @@ export const Web3Provider = ({ children }) => {
     const acc = getLocalAccount();
     if (acc) setAccount(acc);
 
-    const ethProvider = new ethers.providers.InfuraProvider(
-      'homestead',
-      process.env.REACT_APP_INFURA_KEY
-    );
+    // ✅ Use Infura if key exists, otherwise default provider
+    const ethProvider = process.env.REACT_APP_INFURA_KEY
+      ? new ethers.providers.InfuraProvider('homestead', process.env.REACT_APP_INFURA_KEY)
+      : ethers.getDefaultProvider();
+
     setProvider(ethProvider);
   }, []);
 
   const unlockWallet = async (passcodeOrKey) => {
     if (!account) throw new Error('No local account found.');
+
+    // Decrypt mnemonic
     const decryptedSeed = await decryptData(account.encryptedSeed, passcodeOrKey);
     setSeed(decryptedSeed);
 
+    // Create wallet and connect to provider
     const walletInstance = ethers.Wallet.fromMnemonic(decryptedSeed).connect(provider);
     setWallet(walletInstance);
 
+    // Get network info
     const net = await walletInstance.provider.getNetwork();
     setNetwork(net);
+
     return walletInstance;
   };
 
