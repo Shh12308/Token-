@@ -70,3 +70,5 @@ const PurchaseModal = ({ nft, onClose }) => {
     </div>
   );
 };
+
+export default PurchaseModal;
