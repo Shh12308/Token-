@@ -2,16 +2,23 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  customNetworks: [],
-  wallets: [], // <-- add a wallets array
+  wallets: [],
+  activeWallet: null,
   balance: {},
   transactions: [],
+  customNetworks: [],
 };
 
 const walletSlice = createSlice({
   name: 'wallet',
   initialState,
   reducers: {
+    addWallet: (state, action) => {
+      state.wallets.push(action.payload);
+    },
+    setActiveWallet: (state, action) => {
+      state.activeWallet = action.payload;
+    },
     setBalance: (state, action) => {
       state.balance = action.payload;
     },
@@ -26,19 +33,21 @@ const walletSlice = createSlice({
         (net) => net.chainId !== action.payload.chainId
       );
     },
-    // NEW: addWallet action
-    addWallet: (state, action) => {
-      state.wallets.push(action.payload);
-    },
   },
 });
 
+// Export actions
 export const {
+  addWallet,
+  setActiveWallet,
   setBalance,
   addTransaction,
   addCustomNetwork,
   deleteCustomNetwork,
-  addWallet, // <-- export it
 } = walletSlice.actions;
+
+// Selectors
+export const selectAllWallets = (state) => state.wallet.wallets;
+export const selectActiveWallet = (state) => state.wallet.activeWallet;
 
 export default walletSlice.reducer;
