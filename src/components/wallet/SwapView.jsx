@@ -1,3 +1,4 @@
+// src/components/wallet/SwapView.jsx
 import React, { useState, useEffect } from 'react';
 import { useSwapTokenMutation } from '../../app/services/walletApi';
 import { useGetMarketsQuery } from '../../app/services/coingeckoApi';
@@ -9,30 +10,55 @@ const SwapView = ({ balances }) => {
   const [amount, setAmount] = useState('');
   const [isFromModalOpen, setIsFromModalOpen] = useState(false);
   const [isToModalOpen, setIsToModalOpen] = useState(false);
-  
-  const [swap, { isLoading, error, isSuccess }] = useSwapTokenMutation();
+
+  // RTK Query mutation
+  const [swap, { isLoading, error, data }] = useSwapTokenMutation();
+
+  // Get available tokens from market API
   const { data: tokens } = useGetMarketsQuery();
 
   // Set default tokens on initial load
   useEffect(() => {
     if (tokens && tokens.length > 0 && !fromToken) {
-      setFromToken(tokens.find(t => t.symbol === 'ETH'));
-      setToToken(tokens.find(t => t.symbol === 'USDC'));
+      setFromToken(tokens.find(t => t.symbol === 'ETH') || tokens[0]);
+      setToToken(tokens.find(t => t.symbol === 'USDC') || tokens[1]);
     }
-  }, [tokens, fromToken, toToken]);
+  }, [tokens, fromToken]);
 
-  const handleSwap = (e) => {
+  const handleSwap = async (e) => {
     e.preventDefault();
     if (!fromToken || !toToken || !amount) return;
-    swap({ fromToken: fromToken.symbol, toToken: toToken.symbol, amount });
+
+    try {
+      const result = await swap({
+        fromToken: fromToken.symbol,
+        toToken: toToken.symbol,
+        amount,
+      }).unwrap(); // unwrap handles success/error
+
+      console.log('Swap result:', result);
+      setAmount(''); // clear input
+    } catch (err) {
+      console.error('Swap failed:', err);
+    }
   };
 
   return (
-    <>
+    <div className="swap-view-container">
       <form className="wallet-form" onSubmit={handleSwap}>
+        {/* From token input */}
         <div className="swap-input-group">
-          <input type="number" placeholder="0.0" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <button type="button" className="token-button" onClick={() => setIsFromModalOpen(true)}>
+          <input
+            type="number"
+            placeholder="0.0"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+          <button
+            type="button"
+            className="token-button"
+            onClick={() => setIsFromModalOpen(true)}
+          >
             {fromToken ? (
               <>
                 <img src={fromToken.image} alt={fromToken.name} />
@@ -41,12 +67,28 @@ const SwapView = ({ balances }) => {
             ) : 'Select Token'}
           </button>
         </div>
-        <button type="button" className="reverse-button" onClick={() => {
-          const temp = fromToken; setFromToken(toToken); setToToken(temp);
-        }}>⬇️</button>
+
+        {/* Swap direction button */}
+        <button
+          type="button"
+          className="reverse-button"
+          onClick={() => {
+            const temp = fromToken;
+            setFromToken(toToken);
+            setToToken(temp);
+          }}
+        >
+          ⬇️
+        </button>
+
+        {/* To token input */}
         <div className="swap-input-group">
           <input type="text" placeholder="0.0" disabled />
-          <button type="button" className="token-button" onClick={() => setIsToModalOpen(true)}>
+          <button
+            type="button"
+            className="token-button"
+            onClick={() => setIsToModalOpen(true)}
+          >
             {toToken ? (
               <>
                 <img src={toToken.image} alt={toToken.name} />
@@ -55,13 +97,27 @@ const SwapView = ({ balances }) => {
             ) : 'Select Token'}
           </button>
         </div>
-        {error && <p className="error-message">{error.data}</p>}
-        {isSuccess && <p className="success-message">Swap Successful!</p>}
+
+        {/* Status messages */}
+        {error && (
+          <p className="error-message">
+            {error?.data?.message || 'Swap failed, try again.'}
+          </p>
+        )}
+        {data && (
+          <p className="success-message">
+            Swapped {data.fromTokenAmount} {fromToken.symbol} → {data.toTokenAmount}{' '}
+            {toToken.symbol}
+          </p>
+        )}
+
+        {/* Swap button */}
         <button type="submit" className="button-primary" disabled={isLoading || !amount}>
           {isLoading ? 'Swapping...' : 'Swap'}
         </button>
       </form>
 
+      {/* Token selection modals */}
       <TokenSelectModal
         isOpen={isFromModalOpen}
         onClose={() => setIsFromModalOpen(false)}
@@ -72,7 +128,7 @@ const SwapView = ({ balances }) => {
         onClose={() => setIsToModalOpen(false)}
         onSelect={setToToken}
       />
-    </>
+    </div>
   );
 };
 
