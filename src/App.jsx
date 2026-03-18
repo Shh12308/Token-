@@ -8,7 +8,7 @@ import { NotificationProvider } from './context/NotificationContext';
 import GlobalStyles from './styles/GlobalStyles';
 import { AnimatePresence } from 'framer-motion';
 
-// Import Components
+// Components
 import SplashScreen from './components/SplashScreen';
 import Onboarding from './components/Onboarding';
 import Home from './pages/Home';
@@ -40,9 +40,7 @@ const App = () => {
     }, 2000);
   }, []);
 
-  if (isLoading) {
-    return <SplashScreen />;
-  }
+  if (isLoading) return <SplashScreen />;
 
   return (
     <Provider store={store}>
@@ -53,14 +51,20 @@ const App = () => {
             <Router>
               <AnimatePresence mode="wait">
                 <Routes>
-                  {/* Default home route */}
-                  <Route path="/" element={<Home />} />
-
-                  {/* Conditional onboarding & lock routes */}
-                  {!isOnboarded && <Route path="/onboarding" element={<Onboarding />} />}
-                  {isLocked && <Route path="/lock" element={<LockScreen />} />}
+                  {/* Default route: check onboarding & lock */}
+                  <Route
+                    path="/"
+                    element={
+                      !isOnboarded ? <Navigate to="/onboarding" replace /> :
+                      isLocked ? <Navigate to="/lock" replace /> :
+                      <Home />
+                    }
+                  />
 
                   {/* Other pages */}
+                  <Route path="/onboarding" element={<Onboarding />} />
+                  <Route path="/lock" element={<LockScreen />} />
+                  <Route path="/home" element={<Home />} />
                   <Route path="/wallet" element={<Wallet />} />
                   <Route path="/crypto-sticks" element={<CryptoSticks />} />
                   <Route path="/search" element={<Search />} />
