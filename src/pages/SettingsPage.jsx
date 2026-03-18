@@ -6,7 +6,7 @@ import {
   updateUserProfile,
   addCustomNetwork,
   deleteCustomNetwork,
-} from '../features/wallet/walletSlice';
+} from '../store/wallet/walletSlice';
 import Sidebar from '../components/common/Sidebar';
 
 // --- MODAL COMPONENTS (Nested) ---
