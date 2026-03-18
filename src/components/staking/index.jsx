@@ -5,14 +5,20 @@ import { FiArrowUpRight, FiArrowDownLeft, FiZap, FiClock } from 'react-icons/fi'
 import { useSelector, useDispatch } from 'react-redux';
 import { updateBalance } from '../../store/slices/walletSlice';
 import { fetchMarketData } from '../../store/slices/marketSlice';
+
+// ✅ EXPORT COMPONENTS FOR BARREL IMPORTS
+export { default as StakingPool } from './StakingPool';
+export { default as FarmingPool } from './FarmingPool';
 export { default as YieldCalculator } from './YieldCalculator';
 
+// === STAKING OPTIONS ===
 const stakingOptions = [
   { id: 'eth', name: 'Ethereum', symbol: 'ETH', apr: 5.2 },
   { id: 'btc', name: 'Bitcoin', symbol: 'BTC', apr: 3.1 },
   { id: 'usdc', name: 'USDC', symbol: 'USDC', apr: 7.5 },
 ];
 
+// === STAKING CARD ===
 const StakingCard = ({ staking, onStake }) => (
   <motion.div
     className="staking-card bg-white dark:bg-gray-800 shadow-md rounded-lg p-4 flex flex-col"
@@ -36,14 +42,14 @@ const StakingCard = ({ staking, onStake }) => (
   </motion.div>
 );
 
+// === STAKING PAGE ===
 const Staking = () => {
   const dispatch = useDispatch();
-  const { balances, walletAddress } = useSelector(state => state.wallet);
+  const { balance, activeWallet } = useSelector(state => state.wallet);
   const { marketData } = useSelector(state => state.market);
   const [stakingHistory, setStakingHistory] = useState([]);
 
   useEffect(() => {
-    dispatch(updateBalance());
     dispatch(fetchMarketData());
   }, [dispatch]);
 
@@ -58,6 +64,8 @@ const Staking = () => {
     setStakingHistory([newStake, ...stakingHistory]);
   };
 
+  const totalBalance = Object.values(balance || {}).reduce((acc, val) => acc + val, 0);
+
   return (
     <div className="staking-page p-6">
       <h1 className="text-3xl font-bold mb-6">Crypto Staking</h1>
@@ -66,13 +74,11 @@ const Staking = () => {
       <div className="wallet-summary flex justify-between items-center mb-6 bg-gray-50 dark:bg-gray-900 p-4 rounded shadow">
         <div>
           <div className="text-gray-500">Wallet</div>
-          <div className="font-semibold">{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</div>
+          <div className="font-semibold">{activeWallet?.slice(0, 6)}...{activeWallet?.slice(-4)}</div>
         </div>
         <div>
           <div className="text-gray-500">Total Balance</div>
-          <div className="font-bold">
-            ${Object.values(balances).reduce((acc, b) => acc + b.usdValue, 0).toFixed(2)}
-          </div>
+          <div className="font-bold">${totalBalance.toFixed(2)}</div>
         </div>
       </div>
 
