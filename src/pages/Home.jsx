@@ -9,7 +9,7 @@ import {
   FiArrowDownLeft, FiClock, FiZap, FiShield, FiChevronRight,
   FiRefreshCw, FiEye, FiEyeOff, FiCopy, FiExternalLink
 } from 'react-icons/fi';
-import { updateBalance } from '../store/slices/walletSlice';
+import { setBalance } from '../store/slices/walletSlice';
 import { fetchMarketData } from '../store/slices/marketSlice';
 
 const Home = () => {
