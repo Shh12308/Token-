@@ -1,13 +1,13 @@
+// src/context/ThemeContext.jsx
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 // Create the Theme context
-const ThemeContext = createContext();
+export const ThemeContext = createContext(); // <-- export here
 
 // Provider component
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState("light");
 
-  // Load theme from localStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme) setTheme(savedTheme);
