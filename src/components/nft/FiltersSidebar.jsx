@@ -1,62 +1,57 @@
 // src/components/nft/FiltersSidebar.jsx
-import React from 'react';
+import React, { useState } from 'react';
 
-const FiltersSidebar = ({ filters, onChange }) => {
-  const handleChange = (key, value) => {
-    onChange({ [key]: value });
+const FiltersSidebar = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+
+  const categories = ['All', 'Art', 'Collectibles', 'Games', 'Music'];
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleCategoryChange = (category) => {
+    setSelectedCategory(category);
   };
 
   return (
-    <div className="filters-sidebar">
-      <h3>Filters</h3>
-      
-      {/* Status Filter */}
-      <div className="filter-group">
-        <label>Status</label>
-        <select value={filters.status} onChange={(e) => handleChange('status', e.target.value)}>
-          <option value="all">All</option>
-          <option value="buy_now">Buy Now</option>
-          <option value="auction">On Auction</option>
-        </select>
+    <div className="filters-sidebar p-4 bg-gray-50 dark:bg-gray-900 rounded shadow">
+      <h2 className="text-lg font-semibold mb-4">Filters</h2>
+
+      {/* Search */}
+      <div className="mb-4">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={handleSearchChange}
+          placeholder="Search NFTs..."
+          className="w-full p-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+        />
       </div>
 
-      {/* Chain Filter */}
-      <div className="filter-group">
-        <label>Blockchain</label>
-        <select value={filters.chain} onChange={(e) => handleChange('chain', e.target.value)}>
-          <option value="all">All Chains</option>
-          <option value="ethereum">Ethereum</option>
-          <option value="polygon">Polygon</option>
-          <option value="solana">Solana</option>
-        </select>
+      {/* Categories */}
+      <div>
+        <h3 className="font-semibold mb-2">Categories</h3>
+        <ul className="space-y-1">
+          {categories.map((cat) => (
+            <li key={cat}>
+              <button
+                onClick={() => handleCategoryChange(cat)}
+                className={`px-3 py-1 rounded ${
+                  selectedCategory === cat
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                }`}
+              >
+                {cat}
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
-
-      {/* Price Range Filter */}
-      <div className="filter-group">
-        <label>Price Range</label>
-        <div className="price-inputs">
-          <input
-            type="number"
-            placeholder="Min"
-            value={filters.priceMin}
-            onChange={(e) => handleChange('priceMin', e.target.value)}
-          />
-          <span>to</span>
-          <input
-            type="number"
-            placeholder="Max"
-            value={filters.priceMax}
-            onChange={(e) => handleChange('priceMax', e.target.value)}
-          />
-        </div>
-      </div>
-      
-      {/* Clear Filters Button */}
-      <button className="button-secondary" onClick={() => onChange({
-        status: 'all', chain: 'all', category: 'all', priceMin: '', priceMax: ''
-      })}>
-        Clear All Filters
-      </button>
     </div>
   );
 };
+
+export default FiltersSidebar;
