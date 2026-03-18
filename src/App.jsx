@@ -1,7 +1,5 @@
-// CryptoBean - Advanced Crypto Wallet Application
-// App.js
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import { Web3Provider } from './context/Web3Context';
@@ -32,10 +30,9 @@ const App = () => {
   const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
-    // Check if user has completed onboarding
     const hasOnboarded = localStorage.getItem('cryptoBean_onboarded');
     const isLockedState = localStorage.getItem('cryptoBean_locked');
-    
+
     setTimeout(() => {
       setIsLoading(false);
       setIsOnboarded(hasOnboarded === 'true');
@@ -56,16 +53,14 @@ const App = () => {
             <Router>
               <AnimatePresence mode="wait">
                 <Routes>
-                  <Route path="/" element={
-                    !isOnboarded ? 
-                    <Navigate to="/onboarding" replace /> : 
-                    isLocked ? 
-                    <Navigate to="/lock" replace /> : 
-                    <Navigate to="/home" replace />
-                  } />
-                  <Route path="/onboarding" element={<Onboarding />} />
-                  <Route path="/lock" element={<LockScreen />} />
-                  <Route path="/home" element={<Home />} />
+                  {/* Default home route */}
+                  <Route path="/" element={<Home />} />
+
+                  {/* Conditional onboarding & lock routes */}
+                  {!isOnboarded && <Route path="/onboarding" element={<Onboarding />} />}
+                  {isLocked && <Route path="/lock" element={<LockScreen />} />}
+
+                  {/* Other pages */}
                   <Route path="/wallet" element={<Wallet />} />
                   <Route path="/crypto-sticks" element={<CryptoSticks />} />
                   <Route path="/search" element={<Search />} />
@@ -76,6 +71,8 @@ const App = () => {
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/security" element={<Security />} />
                   <Route path="/profile" element={<Profile />} />
+
+                  {/* Fallback */}
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </AnimatePresence>
