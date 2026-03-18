@@ -1,6 +1,6 @@
 // src/contexts/Web3Context.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { JsonRpcProvider } from "ethers";
+import { BrowserProvider, Wallet, JsonRpcProvider } from 'ethers';
 import { getLocalAccount } from '../utils/storage';
 import { decryptData } from '../utils/crypto';
 
