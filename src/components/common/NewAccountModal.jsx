@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { addWallet } from '../../features/wallet/walletSlice';
+import { addWallet } from '../../store/wallet/walletSlice';
 
 const NewAccountModal = ({ isOpen, onClose }) => {
   const [walletName, setWalletName] = useState('New Wallet');
