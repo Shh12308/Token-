@@ -1,9 +1,16 @@
 // src/components/wallet/SendView.jsx
 import React, { useState, useEffect } from 'react';
-import { Box, Button, TextField, Typography, MenuItem, IconButton } from '@mui/material';
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  MenuItem,
+  IconButton,
+} from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { networks } from '../../utils/networks';
-import { Wallet, getDefaultProvider } from 'ethers';
+import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
 
 const SendView = ({ walletProvider }) => {
@@ -15,13 +22,14 @@ const SendView = ({ walletProvider }) => {
   const [txHash, setTxHash] = useState('');
 
   useEffect(() => {
-    // Optional: detect provider's current network
     const detectNetwork = async () => {
-      if (walletProvider?.getChainId) {
+      if (walletProvider?.getNetwork) {
         try {
-          const chainId = await walletProvider.getChainId();
-          const net = networks.find((n) => n.chainId === chainId);
-          if (net) setNetwork(net);
+          const net = await walletProvider.getNetwork();
+          const found = networks.find(
+            (n) => parseInt(n.chainId, 16) === net.chainId
+          );
+          if (found) setNetwork(found);
         } catch (err) {
           console.error('Failed to detect network', err);
         }
@@ -35,21 +43,28 @@ const SendView = ({ walletProvider }) => {
     if (!net) return;
 
     try {
-      // Attempt to switch MetaMask network
-      await walletProvider.send('wallet_switchEthereumChain', [{ chainId: net.chainId }]);
+      await walletProvider.send('wallet_switchEthereumChain', [
+        { chainId: net.chainId },
+      ]);
       setNetwork(net);
       toast.success(`Switched to ${net.name}`);
     } catch (switchError) {
       console.error(switchError);
-      toast.error('Failed to switch network. Make sure it is added in your wallet.');
+      toast.error('Failed to switch network. Add it to your wallet first.');
     }
   };
 
   const handleSend = async () => {
-    if (!recipient || !ethers.utils.isAddress(recipient)) {
+    if (!walletProvider) {
+      toast.error('Wallet not connected');
+      return;
+    }
+
+    if (!recipient || !ethers.isAddress(recipient)) {
       toast.error('Invalid recipient address');
       return;
     }
+
     if (!amount || parseFloat(amount) <= 0) {
       toast.error('Invalid amount');
       return;
@@ -60,22 +75,25 @@ const SendView = ({ walletProvider }) => {
     setTxHash('');
 
     try {
-      const tx = await walletProvider.sendTransaction({
+      const signer = await walletProvider.getSigner();
+
+      const tx = await signer.sendTransaction({
         to: recipient,
-        value: ethers.utils.parseEther(amount),
+        value: ethers.parseEther(amount),
       });
 
       setTxHash(tx.hash);
       setStatus('Transaction sent! Waiting for confirmation...');
-      toast.success(`Transaction sent: ${tx.hash}`);
+      toast.success('Transaction sent');
 
       await tx.wait();
+
       setStatus('Transaction confirmed!');
       toast.success('Transaction confirmed!');
     } catch (err) {
       console.error(err);
       setStatus(`Error: ${err.message}`);
-      toast.error(`Transaction failed: ${err.message}`);
+      toast.error(`Transaction failed`);
     } finally {
       setSending(false);
     }
@@ -87,6 +105,9 @@ const SendView = ({ walletProvider }) => {
       toast.success('Transaction hash copied!');
     }
   };
+
+  const shortHash = (hash) =>
+    `${hash.slice(0, 6)}...${hash.slice(-4)}`;
 
   return (
     <Box
@@ -153,12 +174,21 @@ const SendView = ({ walletProvider }) => {
       {status && (
         <Box sx={{ mt: 1 }}>
           <Typography variant="body2">{status}</Typography>
+
           {txHash && (
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-              <Typography variant="body2" sx={{ mr: 1, wordBreak: 'break-all' }}>
-                {txHash}
+              <Typography
+                variant="body2"
+                sx={{ mr: 1, wordBreak: 'break-all' }}
+              >
+                {shortHash(txHash)}
               </Typography>
-              <IconButton size="small" onClick={copyHash} sx={{ color: '#90caf9' }}>
+
+              <IconButton
+                size="small"
+                onClick={copyHash}
+                sx={{ color: '#90caf9' }}
+              >
                 <ContentCopyIcon fontSize="small" />
               </IconButton>
             </Box>
