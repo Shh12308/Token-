@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectAllWallets, selectActiveWallet, setActiveWallet } from '../../features/wallet/walletSlice';
+import { selectAllWallets, selectActiveWallet, setActiveWallet } from '../../store/slices/walletSlice';
 import NewAccountModal from './NewAccountModal';
 
 const AccountSwitcher = () => {
