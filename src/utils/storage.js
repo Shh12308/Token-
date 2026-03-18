@@ -1,17 +1,19 @@
 // src/utils/storage.js
 
-const STORAGE_KEY = 'cryptoBeanAccount';
-
-export const saveAccount = (account) => {
-  // account: { email, passcode, seedPhrase }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(account));
+export const getLocalAccount = () => {
+  try {
+    const data = localStorage.getItem('wallet_account');
+    return data ? JSON.parse(data) : null;
+  } catch (err) {
+    console.error('Failed to get local account:', err);
+    return null;
+  }
 };
 
-export const getAccount = () => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : null;
+export const setLocalAccount = (account) => {
+  localStorage.setItem('wallet_account', JSON.stringify(account));
 };
 
-export const clearAccount = () => {
-  localStorage.removeItem(STORAGE_KEY);
+export const clearLocalAccount = () => {
+  localStorage.removeItem('wallet_account');
 };
