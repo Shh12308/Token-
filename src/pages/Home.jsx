@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { FiWallet } from 'react-icons/fi';
+import { FiCreditCard } from 'react-icons/fi';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
   FiHome, FiTrendingUp, FiSearch, FiGrid, FiActivity, 
