@@ -2,14 +2,14 @@
 import React, { useState, useContext } from 'react';
 import { Web3Context } from '../context/Web3Context';
 import { Box, Grid, Card, CardContent, Typography, Button } from '@mui/material';
-import QuickActionView from '../components/wallet/QuickActionView';
+import QuickActionsView from '../components/wallet/QuickActionsView';
 import ReceiveView from '../components/wallet/ReceiveView';
 import SendView from '../components/wallet/SendView';
 import SwapView from '../components/wallet/SwapView';
 import { toast } from 'react-hot-toast';
 
 const defiOptions = [
-  { title: 'Quick Actions', component: QuickActionView },
+  { title: 'Quick Actions', component: QuickActionsView },
   { title: 'Receive', component: ReceiveView },
   { title: 'Send', component: SendView },
   { title: 'Swap', component: SwapView },
