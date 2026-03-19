@@ -8,6 +8,8 @@ import { Toaster } from 'react-hot-toast';
 import App from './App';
 import { ThemeProvider as CustomThemeProvider } from './context/ThemeContext';
 import { Web3Provider } from './context/Web3Context';
+import { Provider } from 'react-redux';
+import { store } from './store';
 
 const darkTheme = createTheme({
   palette: {
@@ -26,28 +28,29 @@ const darkTheme = createTheme({
 });
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
+
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      {/* Wrap with custom ThemeProvider first */}
-      <CustomThemeProvider>
-        {/* Then MUI theme provider */}
-        <MUIThemeProvider theme={darkTheme}>
-          <CssBaseline />
-          <Web3Provider>
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                },
-              }}
-            />
-            <App />
-          </Web3Provider>
-        </MUIThemeProvider>
-      </CustomThemeProvider>
+      <Provider store={store}>
+        <Web3Provider>
+          <CustomThemeProvider>
+            <MUIThemeProvider theme={darkTheme}>
+              <CssBaseline />
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  style: {
+                    background: '#363636',
+                    color: '#fff',
+                  },
+                }}
+              />
+              <App />
+            </MUIThemeProvider>
+          </CustomThemeProvider>
+        </Web3Provider>
+      </Provider>
     </BrowserRouter>
   </React.StrictMode>
 );
