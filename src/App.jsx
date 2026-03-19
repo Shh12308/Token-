@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import { Web3Provider } from './context/Web3Context';
@@ -48,39 +48,37 @@ const App = () => {
         <ThemeProvider>
           <NotificationProvider>
             <GlobalStyles />
-            <Router>
-              <AnimatePresence mode="wait">
-                <Routes>
-                  {/* Default route: check onboarding & lock */}
-                  <Route
-                    path="/"
-                    element={
-                      !isOnboarded ? <Navigate to="/onboarding" replace /> :
-                      isLocked ? <Navigate to="/lock" replace /> :
-                      <Home />
-                    }
-                  />
+            <AnimatePresence mode="wait">
+              <Routes>
+                {/* Default route */}
+                <Route
+                  path="/"
+                  element={
+                    !isOnboarded ? <Navigate to="/onboarding" replace /> :
+                    isLocked ? <Navigate to="/lock" replace /> :
+                    <Home />
+                  }
+                />
 
-                  {/* Other pages */}
-                  <Route path="/onboarding" element={<Onboarding />} />
-                  <Route path="/lock" element={<LockScreen />} />
-                  <Route path="/home" element={<Home />} />
-                  <Route path="/wallet" element={<Wallet />} />
-                  <Route path="/crypto-sticks" element={<CryptoSticks />} />
-                  <Route path="/search" element={<Search />} />
-                  <Route path="/nft" element={<NFTMarketplace />} />
-                  <Route path="/defi" element={<DeFi />} />
-                  <Route path="/activity" element={<Activity />} />
-                  <Route path="/browser" element={<Browser />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="/security" element={<Security />} />
-                  <Route path="/profile" element={<Profile />} />
+                {/* Pages */}
+                <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/lock" element={<LockScreen />} />
+                <Route path="/home" element={<Home />} />
+                <Route path="/wallet" element={<Wallet />} />
+                <Route path="/crypto-sticks" element={<CryptoSticks />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/nft" element={<NFTMarketplace />} />
+                <Route path="/defi" element={<DeFi />} />
+                <Route path="/activity" element={<Activity />} />
+                <Route path="/browser" element={<Browser />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/security" element={<Security />} />
+                <Route path="/profile" element={<Profile />} />
 
-                  {/* Fallback */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </AnimatePresence>
-            </Router>
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </AnimatePresence>
           </NotificationProvider>
         </ThemeProvider>
       </Web3Provider>
