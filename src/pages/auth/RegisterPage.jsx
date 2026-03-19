@@ -3,8 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { generateSeedPhrase } from '../../utils/wallet';
 import { copyToClipboard } from '../../utils/helpers';
-import { deriveKeyFromPasscode, encryptData } from '../../utils/crypto'; // new secure crypto utils
-import * as argon2 from 'argon2-browser';
+import { deriveKeyFromPasscode, encryptData } from '../../utils/crypto';
 
 const BACKEND_URL = 'https://api.yourdomain.com';
 
@@ -54,6 +53,7 @@ const RegisterPage = () => {
 
   const handleCreateAccount = async () => {
     if (!isConfirmedSaved || passcode.length !== 6) return;
+
     setLoading(true);
     setError('');
 
@@ -64,25 +64,33 @@ const RegisterPage = () => {
       // 2️⃣ Encrypt seed phrase locally
       const encryptedSeed = await encryptData(seedPhrase.join(' '), key);
 
-      // 3️⃣ Store encrypted seed locally (never send raw seed to backend)
-      localStorage.setItem('cryptoBeanAccount', JSON.stringify({
-        email,
-        encryptedSeed
-      }));
+      // 3️⃣ Store encrypted wallet locally (NEVER expose raw seed)
+      localStorage.setItem(
+        'cryptoBeanAccount',
+        JSON.stringify({
+          email,
+          encryptedSeed
+        })
+      );
 
-      // 4️⃣ Send only metadata to backend
+      // 4️⃣ Send ONLY credentials (backend should hash password)
       const response = await fetch(`${BACKEND_URL}/accounts/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
-          passwordHash: await argon2.hash({ pass: passcode }) // securely hash password
+          password: passcode
         })
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Registration failed');
 
+      // 5️⃣ Mark auth + onboarding complete
+      localStorage.setItem('cryptoBean_auth', 'true');
+      localStorage.setItem('cryptoBean_onboarded', 'true');
+
+      // 6️⃣ Navigate to login or home
       navigate('/auth/login');
     } catch (err) {
       setError(err.message);
@@ -110,7 +118,11 @@ const RegisterPage = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-              <button className="button-primary" onClick={handleNext} disabled={!email.includes('@')}>
+              <button
+                className="button-primary"
+                onClick={handleNext}
+                disabled={!email.includes('@')}
+              >
                 Continue
               </button>
             </div>
@@ -125,9 +137,15 @@ const RegisterPage = () => {
                 placeholder="Enter 6-digit passcode"
                 maxLength={6}
                 value={passcode}
-                onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) =>
+                  setPasscode(e.target.value.replace(/\D/g, ''))
+                }
               />
-              <button className="button-primary" onClick={handleNext} disabled={passcode.length !== 6}>
+              <button
+                className="button-primary"
+                onClick={handleNext}
+                disabled={passcode.length !== 6}
+              >
                 Next
               </button>
             </div>
@@ -137,22 +155,38 @@ const RegisterPage = () => {
             <div className="auth-step seed-phrase-step">
               <div className="warning-box">
                 <strong>⚠️ This is your master key.</strong>
-                <p>Save it somewhere safe and private. We cannot recover it for you.</p>
+                <p>
+                  Save it somewhere safe and private. We cannot recover it for you.
+                </p>
               </div>
 
               <SeedPhraseGrid phrase={seedPhrase} />
-              <button className="button-secondary" onClick={() => copyToClipboard(seedPhrase.join(' '))}>
+
+              <button
+                className="button-secondary"
+                onClick={() => copyToClipboard(seedPhrase.join(' '))}
+              >
                 Copy Entire Phrase
               </button>
 
               <div className="confirmations">
                 <label className="checkbox-label">
-                  <input type="checkbox" checked={isConfirmedSaved} onChange={(e) => setIsConfirmedSaved(e.target.checked)} />
+                  <input
+                    type="checkbox"
+                    checked={isConfirmedSaved}
+                    onChange={(e) =>
+                      setIsConfirmedSaved(e.target.checked)
+                    }
+                  />
                   I have securely saved my secret phrase.
                 </label>
               </div>
 
-              <button className="button-primary button-large" onClick={handleCreateAccount} disabled={!isConfirmedSaved || loading}>
+              <button
+                className="button-primary button-large"
+                onClick={handleCreateAccount}
+                disabled={!isConfirmedSaved || loading}
+              >
                 {loading ? 'Creating Account...' : 'Create Account'}
               </button>
 
