@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Tabs, Tab, Typography, Paper } from '@mui/material';
-import QuickActionView from '../components/wallet/QuickActionView';
+import QuickActionsView from '../components/wallet/QuickActionsView';
 import ReceiveView from '../components/wallet/ReceiveView';
 import SendView from '../components/wallet/SendView';
 import SwapView from '../components/wallet/SwapView';
