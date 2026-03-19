@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { getNFTs } from '../services/NFTApi';
+import { getNFTs } from '../services/nftApi';
 import NftCard from '../components/nft/NftCard';                 // src/components/nft/NftCard.jsx
 import NftCardSkeleton from '../components/nft/NftCardSkeleton'; // src/components/nft/NftCardSkeleton.jsx
 import FiltersSidebar from '../components/nft/FiltersSidebar';   // src/components/nft/FiltersSidebar.jsx
