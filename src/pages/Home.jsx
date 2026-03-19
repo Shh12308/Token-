@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { FiWallet } from 'react-icons/fi';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
-  FiHome, FiWallet, FiTrendingUp, FiSearch, FiGrid, FiActivity, 
+  FiHome, FiTrendingUp, FiSearch, FiGrid, FiActivity, 
   FiGlobe, FiSettings, FiLock, FiUser, FiDollarSign, FiArrowUpRight,
   FiArrowDownLeft, FiClock, FiZap, FiShield, FiChevronRight,
   FiRefreshCw, FiEye, FiEyeOff, FiCopy, FiExternalLink
