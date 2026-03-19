@@ -60,8 +60,8 @@ const SendView = ({ walletProvider }) => {
       return;
     }
 
-    // ✅ FIXED (ethers v5)
-    if (!recipient || !ethers.utils.isAddress(recipient)) {
+    // ethers v6 validation
+    if (!recipient || !ethers.isAddress(recipient)) {
       toast.error('Invalid recipient address');
       return;
     }
@@ -76,12 +76,11 @@ const SendView = ({ walletProvider }) => {
     setTxHash('');
 
     try {
-      const signer = walletProvider.getSigner();
+      const signer = await walletProvider.getSigner();
 
       const tx = await signer.sendTransaction({
         to: recipient,
-        // ✅ FIXED (ethers v5)
-        value: ethers.utils.parseEther(amount),
+        value: ethers.parseEther(amount),
       });
 
       setTxHash(tx.hash);
