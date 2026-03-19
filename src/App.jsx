@@ -16,7 +16,7 @@ import Wallet from './pages/Wallet';
 import SettingsPage from './pages/SettingsPage';
 import CryptoSticks from './pages/CryptoSticks';
 import Search from './pages/Search';
-import NFTMarketplace from './pages/NFTMarketplace';
+import NftMarketplace from './pages/NftMarketplace';
 import DeFi from './pages/DeFi';
 import Activity from './pages/Activity';
 import Security from './pages/Security';
@@ -67,7 +67,7 @@ const App = () => {
                 <Route path="/wallet" element={<Wallet />} />
                 <Route path="/crypto-sticks" element={<CryptoSticks />} />
                 <Route path="/search" element={<Search />} />
-                <Route path="/nft" element={<NFTMarketplace />} />
+                <Route path="/nft" element={<NftMarketplace />} />
                 <Route path="/defi" element={<DeFi />} />
                 <Route path="/activity" element={<Activity />} />
                 <Route path="/browser" element={<Browser />} />
