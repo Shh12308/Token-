@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
+import { NodeGlobalsPolyfillPlugin } from "@esbuild-plugins/node-globals-polyfill";
 
 export default defineConfig({
   plugins: [
@@ -26,9 +27,27 @@ export default defineConfig({
       }
     })
   ],
+
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src") // Allows imports like "@/services/authApi"
+      "@": path.resolve(__dirname, "./src")
+    }
+  },
+
+  define: {
+    global: "globalThis"
+  },
+
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        global: "globalThis"
+      },
+      plugins: [
+        NodeGlobalsPolyfillPlugin({
+          buffer: true
+        })
+      ]
     }
   }
 });
