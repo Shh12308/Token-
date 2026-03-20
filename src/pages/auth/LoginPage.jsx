@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isBiometricAvailable } from '../../utils/device.js';
-import { copyToClipboard } from '../../utils/helpers';
-import { decryptData } from '../../utils/crypto';
+import { copyToClipboard } from '../../utils/helpers.js';
+import { decryptData } from '../../utils/crypto.js';
 
 const STORAGE_KEY = 'cryptoBeanAccount';
 const getLocalAccount = () => {
