@@ -2,11 +2,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
-import { NodeGlobalsPolyfillPlugin } from "@esbuild-plugins/node-globals-polyfill";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 export default defineConfig({
   plugins: [
     react(),
+    nodePolyfills(), // ✅ modern fix
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico"],
@@ -36,18 +37,5 @@ export default defineConfig({
 
   define: {
     global: "globalThis"
-  },
-
-  optimizeDeps: {
-    esbuildOptions: {
-      define: {
-        global: "globalThis"
-      },
-      plugins: [
-        NodeGlobalsPolyfillPlugin({
-          buffer: true
-        })
-      ]
-    }
   }
 });
