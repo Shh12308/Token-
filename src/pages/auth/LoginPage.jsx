@@ -1,7 +1,7 @@
 // src/pages/auth/LoginPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isBiometricAvailable } from '../../utils/device';
+import { isBiometricAvailable } from '../../utils/device.js';
 import { copyToClipboard } from '../../utils/helpers';
 import { decryptData } from '../../utils/crypto';
 
