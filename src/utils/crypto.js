@@ -27,9 +27,10 @@ export const generateSalt = () => {
   return arrayBufferToBase64(array);
 };
 
-// --- Key derivation ---
-export const deriveKey = async (password, salt) => {
+// --- Key derivation (matches your import name) ---
+export const deriveKeyFromPasscode = async (password, salt) => {
   const enc = new TextEncoder();
+
   const keyMaterial = await window.crypto.subtle.importKey(
     'raw',
     enc.encode(password),
@@ -55,7 +56,7 @@ export const deriveKey = async (password, salt) => {
 // --- Encrypt data ---
 export const encryptData = async (data, password) => {
   const salt = generateSalt();
-  const key = await deriveKey(password, salt);
+  const key = await deriveKeyFromPasscode(password, salt);
 
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
   const enc = new TextEncoder();
@@ -76,7 +77,7 @@ export const encryptData = async (data, password) => {
 // --- Decrypt data ---
 export const decryptData = async (encryptedData, password, iv, salt) => {
   try {
-    const key = await deriveKey(password, salt);
+    const key = await deriveKeyFromPasscode(password, salt);
     const dec = new TextDecoder();
 
     const decrypted = await window.crypto.subtle.decrypt(
