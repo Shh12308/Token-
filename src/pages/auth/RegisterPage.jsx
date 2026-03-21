@@ -5,7 +5,7 @@ import { generateSeedPhrase } from '../../utils/wallet';
 import { copyToClipboard } from '../../utils/helpers';
 import { deriveKeyFromPasscode, encryptData } from '../../utils/crypto';
 
-const BACKEND_URL = 'https://api.yourdomain.com';
+const BACKEND_URL = 'https://blockvault-backend-production.up.railway.app';
 
 const ProgressBar = ({ step }) => (
   <div className="progress-bar">
@@ -73,10 +73,11 @@ const RegisterPage = () => {
         })
       );
 
-      // 4️⃣ Send ONLY credentials (backend should hash password)
-      const response = await fetch(`${BACKEND_URL}/accounts/register`, {
+      // 4️⃣ Send credentials to backend (UPDATED ROUTE)
+      const response = await fetch(`${BACKEND_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           email,
           password: passcode
@@ -84,14 +85,23 @@ const RegisterPage = () => {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Registration failed');
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Registration failed');
+      }
+
+      // Optional: store token if backend returns one
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
 
       // 5️⃣ Mark auth + onboarding complete
       localStorage.setItem('cryptoBean_auth', 'true');
       localStorage.setItem('cryptoBean_onboarded', 'true');
 
-      // 6️⃣ Navigate to login or home
+      // 6️⃣ Navigate to login
       navigate('/auth/login');
+
     } catch (err) {
       setError(err.message);
     } finally {
