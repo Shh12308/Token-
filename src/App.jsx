@@ -29,25 +29,44 @@ const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const hasOnboarded = localStorage.getItem('cryptoBean_onboarded');
-    const isLockedState = localStorage.getItem('cryptoBean_locked');
-    const authState = localStorage.getItem('cryptoBean_auth');
+    try {
+      const hasOnboarded = localStorage.getItem('cryptoBean_onboarded');
+      const isLockedState = localStorage.getItem('cryptoBean_locked');
+      const authState = localStorage.getItem('cryptoBean_auth');
 
-    setTimeout(() => {
+      setTimeout(() => {
+        setIsLoading(false);
+        setIsOnboarded(hasOnboarded === 'true');
+        setIsLocked(isLockedState === 'true');
+        setIsAuthenticated(authState === 'true');
+      }, 1000); // 🔥 shorter delay (less chance of blank screen feeling)
+    } catch (error) {
+      console.error("LocalStorage error:", error);
       setIsLoading(false);
-      setIsOnboarded(hasOnboarded === 'true');
-      setIsLocked(isLockedState === 'true');
-      setIsAuthenticated(authState === 'true');
-    }, 2000);
+    }
   }, []);
 
+  // ✅ safer ProtectedRoute (prevents silent crashes)
   const ProtectedRoute = ({ children }) => {
-    if (!isAuthenticated) return <Navigate to="/auth/login" replace />;
-    if (isLocked) return <Navigate to="/lock" replace />;
-    return children;
+    try {
+      if (!isAuthenticated) return <Navigate to="/auth/login" replace />;
+      if (isLocked) return <Navigate to="/lock" replace />;
+      return children;
+    } catch (error) {
+      console.error("ProtectedRoute error:", error);
+      return <Navigate to="/auth/login" replace />;
+    }
   };
 
-  if (isLoading) return <SplashScreen />;
+  // ✅ fallback if SplashScreen crashes
+  if (isLoading) {
+    try {
+      return <SplashScreen />;
+    } catch (e) {
+      console.error("SplashScreen crash:", e);
+      return <div style={{ color: "white" }}>Loading...</div>;
+    }
+  }
 
   return (
     <AnimatePresence mode="wait">
@@ -81,6 +100,7 @@ const App = () => {
         <Route path="/security" element={<ProtectedRoute><Security /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
+        {/* ✅ fallback route */}
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
