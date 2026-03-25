@@ -1,6 +1,5 @@
-// src/contexts/Web3Context.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ethers } from 'ethers';
+import { InfuraProvider, Wallet } from 'ethers';
 import { getLocalAccount } from '../utils/storage';
 import { decryptData } from '../utils/crypto';
 
@@ -18,14 +17,13 @@ export const Web3Provider = ({ children }) => {
       const acc = getLocalAccount();
       if (acc) setAccount(acc);
 
-      // ✅ safer provider init
-      const ethProvider =
-        process.env.REACT_APP_INFURA_KEY
-          ? new ethers.InfuraProvider(
-              'homestead',
-              process.env.REACT_APP_INFURA_KEY
-            )
-          : ethers.getDefaultProvider();
+      // ✅ ethers v6 provider setup
+      const ethProvider = process.env.REACT_APP_INFURA_KEY
+        ? new InfuraProvider(
+            'mainnet',
+            process.env.REACT_APP_INFURA_KEY
+          )
+        : new InfuraProvider();
 
       setProvider(ethProvider);
     } catch (error) {
@@ -38,17 +36,18 @@ export const Web3Provider = ({ children }) => {
       if (!account) throw new Error('No local account found.');
       if (!provider) throw new Error('Provider not initialized');
 
+      // ✅ decrypt wallet seed
       const decryptedSeed = await decryptData(
-  account.encryptedSeed,
-  passcodeOrKey,
-  account.iv,
-  account.salt
-);
+        account.encryptedSeed,
+        passcodeOrKey,
+        account.iv,
+        account.salt
+      );
 
       setSeed(decryptedSeed);
 
-      // ✅ ethers v6 correct usage
-      const walletInstance = ethers.Wallet.fromPhrase(decryptedSeed).connect(
+      // ✅ ethers v6 wallet creation
+      const walletInstance = Wallet.fromPhrase(decryptedSeed).connect(
         provider
       );
 
