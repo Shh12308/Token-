@@ -10,7 +10,7 @@ import {
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { networks } from '../../utils/networks';
-import { ethers } from 'ethers';
+import { isAddress, parseEther } from 'ethers';
 import toast from 'react-hot-toast';
 
 const SendView = ({ walletProvider }) => {
@@ -61,7 +61,7 @@ const SendView = ({ walletProvider }) => {
     }
 
     // ethers v6 validation
-    if (!recipient || !ethers.isAddress(recipient)) {
+    if (!recipient || !isAddress(recipient)) {
       toast.error('Invalid recipient address');
       return;
     }
@@ -80,7 +80,7 @@ const SendView = ({ walletProvider }) => {
 
       const tx = await signer.sendTransaction({
         to: recipient,
-        value: ethers.parseEther(amount),
+        value: parseEther(amount),
       });
 
       setTxHash(tx.hash);
