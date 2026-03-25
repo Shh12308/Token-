@@ -39,9 +39,11 @@ export const Web3Provider = ({ children }) => {
       if (!provider) throw new Error('Provider not initialized');
 
       const decryptedSeed = await decryptData(
-        account.encryptedSeed,
-        passcodeOrKey
-      );
+  account.encryptedSeed,
+  passcodeOrKey,
+  account.iv,
+  account.salt
+);
 
       setSeed(decryptedSeed);
 
