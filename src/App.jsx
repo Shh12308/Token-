@@ -1,91 +1,66 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+// src/App.jsx
+import React from "react";
+import { Routes, Route } from "react-router-dom";
 
-// Components
-import SplashScreen from './components/SplashScreen';
-import Onboarding from './components/Onboarding';
-import LockScreen from './components/LockScreen';
+// Pages (update paths to match YOUR project)
+import Home from "./pages/Home";
+import Wallet from "./pages/Wallet";
+import SettingsPage from "./pages/SettingsPage";
+import CryptoSticks from "./pages/CryptoSticks";
+import Search from "./pages/Search";
+import NftMarketplace from "./pages/NftMarketplace";
+import DeFi from "./pages/DeFi";
+import Activity from "./pages/Activity";
+import Security from "./pages/Security";
+import Browser from "./pages/Browser";
+import Profile from "./pages/Profile";
 
-// Pages
-import Home from './pages/Home';
-import Wallet from './pages/Wallet';
-import SettingsPage from './pages/SettingsPage';
-import CryptoSticks from './pages/CryptoSticks';
-import Search from './pages/Search';
-import NftMarketplace from './pages/NftMarketplace';
-import DeFi from './pages/DeFi';
-import Activity from './pages/Activity';
-import Security from './pages/Security';
-import Browser from './pages/Browser';
-import Profile from './pages/Profile';
-import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
+// Auth
+import LoginPage from "./pages/auth/LoginPage";
+import RegisterPage from "./pages/auth/RegisterPage";
 
-const App = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isOnboarded, setIsOnboarded] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+// Other screens
+import Onboarding from "./components/Onboarding";
+import LockScreen from "./components/LockScreen";
 
-  useEffect(() => {
-    const hasOnboarded = localStorage.getItem('cryptoBean_onboarded');
-    const isLockedState = localStorage.getItem('cryptoBean_locked');
-    const authState = localStorage.getItem('cryptoBean_auth');
+// Optional fallback (create if you don’t have one)
+const NotFound = () => (
+  <div style={{ color: "white" }}>404 - Page Not Found</div>
+);
 
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsOnboarded(hasOnboarded === 'true');
-      setIsLocked(isLockedState === 'true');
-      setIsAuthenticated(authState === 'true');
-    }, 2000);
-  }, []);
-
-  const ProtectedRoute = ({ children }) => {
-    if (!isAuthenticated) return <Navigate to="/auth/login" replace />;
-    if (isLocked) return <Navigate to="/lock" replace />;
-    return children;
-  };
-
-  if (isLoading) return <SplashScreen />;
-
+function App() {
   return (
-    <AnimatePresence mode="wait">
-      <Routes>
+    <Routes>
 
-        <Route
-          path="/"
-          element={
-            !isOnboarded ? <Navigate to="/onboarding" replace /> :
-            !isAuthenticated ? <Navigate to="/auth/login" replace /> :
-            isLocked ? <Navigate to="/lock" replace /> :
-            <Navigate to="/home" replace />
-          }
-        />
+      {/* Root */}
+      <Route path="/" element={<Home />} />
 
-        <Route path="/auth/login" element={<LoginPage />} />
-        <Route path="/auth/register" element={<RegisterPage />} />
+      {/* Auth */}
+      <Route path="/auth/login" element={<LoginPage />} />
+      <Route path="/auth/register" element={<RegisterPage />} />
 
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/lock" element={<LockScreen />} />
+      {/* Setup */}
+      <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/lock" element={<LockScreen />} />
 
-        <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-        <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
-        <Route path="/crypto-sticks" element={<ProtectedRoute><CryptoSticks /></ProtectedRoute>} />
-        <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
-        <Route path="/nft" element={<ProtectedRoute><NftMarketplace /></ProtectedRoute>} />
-        <Route path="/defi" element={<ProtectedRoute><DeFi /></ProtectedRoute>} />
-        <Route path="/activity" element={<ProtectedRoute><Activity /></ProtectedRoute>} />
-        <Route path="/browser" element={<ProtectedRoute><Browser /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-        <Route path="/security" element={<ProtectedRoute><Security /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      {/* Main App */}
+      <Route path="/home" element={<Home />} />
+      <Route path="/wallet" element={<Wallet />} />
+      <Route path="/crypto-sticks" element={<CryptoSticks />} />
+      <Route path="/search" element={<Search />} />
+      <Route path="/nft" element={<NftMarketplace />} />
+      <Route path="/defi" element={<DeFi />} />
+      <Route path="/activity" element={<Activity />} />
+      <Route path="/browser" element={<Browser />} />
+      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/security" element={<Security />} />
+      <Route path="/profile" element={<Profile />} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+      {/* 404 */}
+      <Route path="*" element={<NotFound />} />
 
-      </Routes>
-    </AnimatePresence>
+    </Routes>
   );
-};
+}
 
 export default App;
