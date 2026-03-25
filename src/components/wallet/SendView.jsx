@@ -10,7 +10,7 @@ import {
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { networks } from '../../utils/networks';
-import { isAddress, parseEther } from 'ethers';
+import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
 
 const SendView = ({ walletProvider }) => {
