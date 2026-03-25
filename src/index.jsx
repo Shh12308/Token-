@@ -4,7 +4,9 @@ import ReactDOM from 'react-dom/client';
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
 root.render(
-  <div style={{ color: 'white', background: 'black' }}>
-    Test Render Works
-  </div>
+  <React.StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </React.StrictMode>
 );
