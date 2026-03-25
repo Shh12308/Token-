@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { InfuraProvider, Wallet } from 'ethers';
+import { ethers } from 'ethers';
 import { getLocalAccount } from '../utils/storage';
 import { decryptData } from '../utils/crypto';
 
@@ -17,13 +17,13 @@ export const Web3Provider = ({ children }) => {
       const acc = getLocalAccount();
       if (acc) setAccount(acc);
 
-      // ✅ ethers v6 provider setup
+      // ✅ ethers v6 provider setup (correct)
       const ethProvider = process.env.REACT_APP_INFURA_KEY
-        ? new InfuraProvider(
+        ? new ethers.InfuraProvider(
             'mainnet',
             process.env.REACT_APP_INFURA_KEY
           )
-        : new InfuraProvider();
+        : new ethers.InfuraProvider();
 
       setProvider(ethProvider);
     } catch (error) {
@@ -46,8 +46,8 @@ export const Web3Provider = ({ children }) => {
 
       setSeed(decryptedSeed);
 
-      // ✅ ethers v6 wallet creation
-      const walletInstance = Wallet.fromPhrase(decryptedSeed).connect(
+      // ✅ ethers v6 wallet creation (correct)
+      const walletInstance = ethers.Wallet.fromPhrase(decryptedSeed).connect(
         provider
       );
 
