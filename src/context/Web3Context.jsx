@@ -14,41 +14,52 @@ export const Web3Provider = ({ children }) => {
   const [network, setNetwork] = useState(null);
 
   useEffect(() => {
-    const acc = getLocalAccount();
-    if (acc) setAccount(acc);
+    try {
+      const acc = getLocalAccount();
+      if (acc) setAccount(acc);
 
-    // ✅ ethers v6 provider
-    const ethProvider = process.env.REACT_APP_INFURA_KEY
-      ? new ethers.InfuraProvider(
-          'homestead',
-          process.env.REACT_APP_INFURA_KEY
-        )
-      : ethers.getDefaultProvider();
+      // ✅ safer provider init
+      const ethProvider =
+        process.env.REACT_APP_INFURA_KEY
+          ? new ethers.InfuraProvider(
+              'homestead',
+              process.env.REACT_APP_INFURA_KEY
+            )
+          : ethers.getDefaultProvider();
 
-    setProvider(ethProvider);
+      setProvider(ethProvider);
+    } catch (error) {
+      console.error("Web3Provider init error:", error);
+    }
   }, []);
 
   const unlockWallet = async (passcodeOrKey) => {
-    if (!account) throw new Error('No local account found.');
+    try {
+      if (!account) throw new Error('No local account found.');
+      if (!provider) throw new Error('Provider not initialized');
 
-    const decryptedSeed = await decryptData(
-      account.encryptedSeed,
-      passcodeOrKey
-    );
+      const decryptedSeed = await decryptData(
+        account.encryptedSeed,
+        passcodeOrKey
+      );
 
-    setSeed(decryptedSeed);
+      setSeed(decryptedSeed);
 
-    // ✅ ethers v6 uses HDNodeWallet instead of fromMnemonic
-    const walletInstance = ethers.Wallet.fromPhrase(decryptedSeed).connect(
-      provider
-    );
+      // ✅ ethers v6 correct usage
+      const walletInstance = ethers.Wallet.fromPhrase(decryptedSeed).connect(
+        provider
+      );
 
-    setWallet(walletInstance);
+      setWallet(walletInstance);
 
-    const net = await walletInstance.provider.getNetwork();
-    setNetwork(net);
+      const net = await walletInstance.provider.getNetwork();
+      setNetwork(net);
 
-    return walletInstance;
+      return walletInstance;
+    } catch (error) {
+      console.error("unlockWallet error:", error);
+      throw error;
+    }
   };
 
   const logout = () => {
