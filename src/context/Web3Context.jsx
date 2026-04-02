@@ -17,12 +17,8 @@ export const Web3Provider = ({ children }) => {
       const acc = getLocalAccount();
       if (acc) setAccount(acc);
 
-      // ✅ ethers v6 provider setup (correct)
       const ethProvider = process.env.REACT_APP_INFURA_KEY
-        ? new ethers.InfuraProvider(
-            'mainnet',
-            process.env.REACT_APP_INFURA_KEY
-          )
+        ? new ethers.InfuraProvider('mainnet', process.env.REACT_APP_INFURA_KEY)
         : new ethers.InfuraProvider();
 
       setProvider(ethProvider);
@@ -32,35 +28,25 @@ export const Web3Provider = ({ children }) => {
   }, []);
 
   const unlockWallet = async (passcodeOrKey) => {
-    try {
-      if (!account) throw new Error('No local account found.');
-      if (!provider) throw new Error('Provider not initialized');
+    if (!account) throw new Error('No local account found.');
+    if (!provider) throw new Error('Provider not initialized');
 
-      // ✅ decrypt wallet seed
-      const decryptedSeed = await decryptData(
-        account.encryptedSeed,
-        passcodeOrKey,
-        account.iv,
-        account.salt
-      );
+    const decryptedSeed = await decryptData(
+      account.encryptedSeed,
+      passcodeOrKey,
+      account.iv,
+      account.salt
+    );
 
-      setSeed(decryptedSeed);
+    setSeed(decryptedSeed);
 
-      // ✅ ethers v6 wallet creation (correct)
-      const walletInstance = ethers.Wallet.fromPhrase(decryptedSeed).connect(
-        provider
-      );
+    const walletInstance = ethers.Wallet.fromPhrase(decryptedSeed).connect(provider);
+    setWallet(walletInstance);
 
-      setWallet(walletInstance);
+    const net = await walletInstance.provider.getNetwork();
+    setNetwork(net);
 
-      const net = await walletInstance.provider.getNetwork();
-      setNetwork(net);
-
-      return walletInstance;
-    } catch (error) {
-      console.error("unlockWallet error:", error);
-      throw error;
-    }
+    return walletInstance;
   };
 
   const logout = () => {
