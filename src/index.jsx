@@ -5,10 +5,15 @@ import App from './App';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
+// import { Web3Provider } from './context/Web3Context';
+
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <App />
+      {/* REMOVE THIS TEMPORARILY */}
+      {/* <Web3Provider> */}
+        <App />
+      {/* </Web3Provider> */}
     </BrowserRouter>
   </React.StrictMode>
 );
