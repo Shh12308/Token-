@@ -13,19 +13,23 @@ export const Web3Provider = ({ children }) => {
   const [network, setNetwork] = useState(null);
 
   useEffect(() => {
-    try {
-      const acc = getLocalAccount();
-      if (acc) setAccount(acc);
+  try {
+    const acc = getLocalAccount();
+    if (acc) setAccount(acc);
 
-      const ethProvider = process.env.REACT_APP_INFURA_KEY
-        ? new ethers.InfuraProvider('mainnet', process.env.REACT_APP_INFURA_KEY)
-        : new ethers.InfuraProvider();
+    const infuraKey = import.meta.env.VITE_INFURA_KEY;
 
-      setProvider(ethProvider);
-    } catch (error) {
-      console.error("Web3Provider init error:", error);
-    }
-  }, []);
+    const ethProvider = infuraKey
+      ? new ethers.JsonRpcProvider(
+          `https://mainnet.infura.io/v3/${infuraKey}`
+        )
+      : new ethers.JsonRpcProvider();
+
+    setProvider(ethProvider);
+  } catch (error) {
+    console.error("Web3Provider init error:", error);
+  }
+}, []);
 
   const unlockWallet = async (passcodeOrKey) => {
     if (!account) throw new Error('No local account found.');
