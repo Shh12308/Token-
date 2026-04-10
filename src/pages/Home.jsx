@@ -1,44 +1,118 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { FiCreditCard } from 'react-icons/fi';
-import { useSelector, useDispatch } from 'react-redux';
+import axios from 'axios'; // 1. Import Axios
 import { 
   FiHome, FiTrendingUp, FiSearch, FiGrid, FiActivity, 
   FiGlobe, FiSettings, FiLock, FiUser, FiDollarSign, FiArrowUpRight,
   FiArrowDownLeft, FiClock, FiZap, FiShield, FiChevronRight,
   FiRefreshCw, FiEye, FiEyeOff, FiCopy, FiExternalLink
 } from 'react-icons/fi';
-import { setBalance } from '../store/slices/walletSlice';
-import { fetchMarketData } from '../store/slices/marketSlice';
+
+const BACKEND_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+
+// Assuming these styled components are imported or defined elsewhere in your file
+// If they are CSS classes, adjust the JSX accordingly.
+const DashboardContainer = ({ children }) => <div className="dashboard-container">{children}</div>;
+const AnimatedBackground = () => <div className="animated-background" />;
+const WalletCard = ({ children }) => <div className="wallet-card">{children}</div>;
+const QuickActions = ({ children }) => <div className="quick-actions">{children}</div>;
+const MarketOverview = ({ children }) => <div className="market-overview">{children}</div>;
+const RecentTransactions = ({ children }) => <div className="recent-transactions">{children}</div>;
+
+const NetworkStatus = ({ network }) => <div className="network-status">{network || 'Ethereum'}</div>;
 
 const Home = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const { balances, selectedNetwork, walletAddress } = useSelector(state => state.wallet);
-  const { marketData } = useSelector(state => state.market);
+  
+  // 2. Local State instead of Redux for direct Backend connection
+  const [balances, setBalances] = useState({});
+  const [marketData, setMarketData] = useState([]);
+  const [selectedNetwork, setSelectedNetwork] = useState('ethereum');
+  const [walletAddress, setWalletAddress] = useState('');
   const [showBalance, setShowBalance] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
+  // 3. Auth Check & Data Fetching
   useEffect(() => {
-    dispatch(updateBalance());
-    dispatch(fetchMarketData());
-    const interval = setInterval(() => {
-      dispatch(updateBalance());
-      dispatch(fetchMarketData());
-    }, 30000);
+    const token = localStorage.getItem('authToken');
+    
+    // REDIRECT LOGIC: If not logged in, go to Login page
+    if (!token) {
+      navigate('/auth/login');
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // A. Fetch Wallet Data
+        const walletRes = await axios.get(`${BACKEND_URL}/wallets`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (walletRes.data.wallets && walletRes.data.wallets.length > 0) {
+          const primaryWallet = walletRes.data.wallets[0];
+          setWalletAddress(primaryWallet.address);
+          // Calculate total balance from the first wallet (simple example)
+          // In production, you would sum up balances across all wallets/tokens
+          const nativeBal = parseFloat(primaryWallet.balances?.native || 0);
+          setBalances({ 
+            usdValue: nativeBal * 2000 // Mock conversion or fetch price from marketData
+          });
+        }
+
+        // B. Fetch Market Data
+        // Fetching top 5 coins for the dashboard
+        const marketRes = await axios.get(`${BACKEND_URL}/market?symbols=ethereum,bitcoin,binancecoin,matic-network,solana`);
+        if (marketRes.data.data) {
+          setMarketData(marketRes.data.data);
+        }
+
+      } catch (err) {
+        console.error('Dashboard fetch error:', err);
+        // If token is invalid (401), logout and redirect
+        if (err.response?.status === 401) {
+          localStorage.removeItem('authToken');
+          navigate('/auth/login');
+        } else {
+          setError('Failed to load dashboard data');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Set up polling for real-time updates (every 30s)
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, [dispatch]);
+  }, [navigate]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await dispatch(updateBalance());
-    await dispatch(fetchMarketData());
+    // Trigger the fetch logic again (refactor fetchData to be reusable if desired, or just reload)
+    window.location.reload(); 
     setTimeout(() => setRefreshing(false), 1000);
   };
 
-  const totalBalance = Object.values(balances).reduce((acc, balance) => acc + balance.usdValue, 0);
-  const totalChange = marketData.reduce((acc, crypto) => acc + (crypto.price_change_percentage_24h || 0), 0) / marketData.length;
+  if (loading) {
+    return (
+      <div className="loading-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div className="spinner">Loading...</div>
+      </div>
+    );
+  }
+
+  // Calculate totals based on fetched data
+  const totalBalance = Object.values(balances).reduce((acc, balance) => acc + (balance.usdValue || 0), 0);
+  const totalChange = marketData.length > 0 
+    ? marketData.reduce((acc, crypto) => acc + (crypto.price_change_percentage_24h || 0), 0) / marketData.length 
+    : 0;
 
   return (
     <DashboardContainer>
@@ -263,10 +337,10 @@ const Home = () => {
                   </div>
                 </div>
                 <div className="market-price">
-                  <span className="price">${crypto.current_price.toLocaleString()}</span>
+                  <span className="price">${crypto.current_price?.toLocaleString() || '0.00'}</span>
                   <span className={`change ${crypto.price_change_percentage_24h >= 0 ? 'positive' : 'negative'}`}>
                     {crypto.price_change_percentage_24h >= 0 ? '+' : ''}
-                    {crypto.price_change_percentage_24h?.toFixed(2)}%
+                    {crypto.price_change_percentage_24h?.toFixed(2) || '0.00'}%
                   </span>
                 </div>
                 <div className="market-chart">
@@ -287,6 +361,7 @@ const Home = () => {
             </button>
           </div>
           <div className="transactions-list">
+            {/* In a real app, you would map over fetched transactions here */}
             {[1, 2, 3].map((item) => (
               <motion.div 
                 key={item}
