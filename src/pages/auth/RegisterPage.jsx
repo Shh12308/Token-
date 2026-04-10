@@ -1,11 +1,12 @@
-// src/pages/auth/RegisterPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios'; // 1. Import Axios
+import { ethers } from 'ethers'; // 2. Import Ethers to derive address
 import { generateSeedPhrase } from '../../utils/wallet';
 import { copyToClipboard } from '../../utils/helpers';
 import { deriveKeyFromPasscode, encryptData } from '../../utils/crypto';
 
-const BACKEND_URL = 'https://blockvault-backend-production.up.railway.app';
+const BACKEND_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 const ProgressBar = ({ step }) => (
   <div className="progress-bar">
@@ -42,6 +43,7 @@ const RegisterPage = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Only generate the seed phrase once when entering step 3
     if (currentStep === 3 && seedPhrase.length === 0) {
       setSeedPhrase(generateSeedPhrase());
     }
@@ -64,46 +66,49 @@ const RegisterPage = () => {
       // 2️⃣ Encrypt seed phrase locally
       const encryptedSeed = await encryptData(seedPhrase.join(' '), key);
 
-      // 3️⃣ Store encrypted wallet locally (NEVER expose raw seed)
+      // 3️⃣ Register User on Backend
+      // We use the passcode as the 'password' for the backend account
+      const response = await axios.post(`${BACKEND_URL}/auth/register`, {
+        email,
+        password: passcode,
+      });
+
+      const { token, user } = response.data;
+
+      // 4️⃣ Store Backend Session
+      if (token) {
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('userInfo', JSON.stringify(user));
+      }
+
+      // 5️⃣ Store Encrypted Wallet Locally
+      // Note: The wallet address derived here is local. 
+      // To fully sync with backend features (like wallet history), 
+      // you would typically send the walletAddress to the backend 
+      // via a 'linkWallet' or 'updateProfile' call later.
+      const wallet = ethers.Wallet.fromPhrase(seedPhrase.join(' '));
+      
       localStorage.setItem(
         'cryptoBeanAccount',
         JSON.stringify({
           email,
+          walletAddress: wallet.address, // Useful to store locally
           encryptedSeed
         })
       );
 
-      // 4️⃣ Send credentials to backend (UPDATED ROUTE)
-      const response = await fetch(`${BACKEND_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          email,
-          password: passcode
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
-      }
-
-      // Optional: store token if backend returns one
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-
-      // 5️⃣ Mark auth + onboarding complete
+      // 6️⃣ Mark auth + onboarding complete
       localStorage.setItem('cryptoBean_auth', 'true');
       localStorage.setItem('cryptoBean_onboarded', 'true');
 
-      // 6️⃣ Navigate to login
-      navigate('/auth/login');
+      // 7️⃣ Navigate to Dashboard
+      navigate('/app/dashboard');
 
     } catch (err) {
-      setError(err.message);
+      console.error(err);
+      // Handle specific backend errors (e.g., email already exists)
+      const msg = err.response?.data?.message || err.message || 'Registration failed';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -140,7 +145,7 @@ const RegisterPage = () => {
 
           {currentStep === 2 && (
             <div className="auth-step">
-              <p>Create a 6-digit passcode. You'll use this to log in quickly.</p>
+              <p>Create a 6-digit passcode. You'll use this to log in quickly and decrypt your wallet.</p>
               <input
                 type="password"
                 className="input-primary input-passcode"
