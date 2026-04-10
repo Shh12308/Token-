@@ -1,20 +1,10 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import App from './App';
-import style from './index.css';
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
+import style from './index.css'
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-
-// import { Web3Provider } from './context/Web3Context';
-
-root.render(
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
-      {/* REMOVE THIS TEMPORARILY */}
-      {/* <Web3Provider> */}
-        <App />
-      {/* </Web3Provider> */}
-    </BrowserRouter>
+    <App />
   </React.StrictMode>
-);
+)
