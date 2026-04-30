@@ -17,7 +17,9 @@ const defiOptions = [
 ];
 
 const DeFi = () => {
-  const { account, connectWallet } = useContext(Web3Context);
+  const web3 = useContext(Web3Context);
+const account = web3?.account || null;
+const connectWallet = web3?.unlockWallet || null;
   const [currentView, setCurrentView] = useState(null);
 
   const handleConnect = async () => {
