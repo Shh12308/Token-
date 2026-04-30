@@ -25,6 +25,5 @@ const QuickActionsView = ({ navigate }) => {
     </div>
   );
 };
-};
 
 export default QuickActionsView;
