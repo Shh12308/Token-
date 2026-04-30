@@ -1,26 +1,26 @@
 import React, { useState } from 'react';
-import { Box, Tabs, Tab, Typography, Paper } from '@mui/material';
+import { Box, Typography, Paper } from '@mui/material';
+
 import QuickActionsView from '../components/wallet/QuickActionsView';
 import ReceiveView from '../components/wallet/ReceiveView';
 import SendView from '../components/wallet/SendView';
 import SwapView from '../components/wallet/SwapView';
 
 const Wallet = () => {
-  const [activeTab, setActiveTab] = useState(0);
+  const [view, setView] = useState('quick');
 
-  const handleChange = (event, newValue) => {
-    setActiveTab(newValue);
+  const renderView = () => {
+    switch (view) {
+      case 'send':
+        return <SendView setView={setView} />;
+      case 'receive':
+        return <ReceiveView setView={setView} />;
+      case 'swap':
+        return <SwapView setView={setView} />;
+      default:
+        return <QuickActionsView setView={setView} />;
+    }
   };
-
-  const TabPanel = ({ children, value, index }) => (
-    <div role="tabpanel" hidden={value !== index}>
-      {value === index && (
-        <Box sx={{ p: 3 }}>
-          {children}
-        </Box>
-      )}
-    </div>
-  );
 
   return (
     <Box sx={{ width: '100%', maxWidth: 800, mx: 'auto', mt: 4 }}>
@@ -28,32 +28,8 @@ const Wallet = () => {
         CryptoBean Wallet
       </Typography>
 
-      <Paper elevation={3}>
-        <Tabs
-          value={activeTab}
-          onChange={handleChange}
-          variant="fullWidth"
-          indicatorColor="primary"
-          textColor="primary"
-        >
-          <Tab label="Quick Actions" />
-          <Tab label="Receive" />
-          <Tab label="Send" />
-          <Tab label="Swap" />
-        </Tabs>
-
-        <TabPanel value={activeTab} index={0}>
-          <QuickActionView />
-        </TabPanel>
-        <TabPanel value={activeTab} index={1}>
-          <ReceiveView />
-        </TabPanel>
-        <TabPanel value={activeTab} index={2}>
-          <SendView />
-        </TabPanel>
-        <TabPanel value={activeTab} index={3}>
-          <SwapView />
-        </TabPanel>
+      <Paper elevation={3} sx={{ p: 2 }}>
+        {renderView()}
       </Paper>
     </Box>
   );
