@@ -1,18 +1,18 @@
-import { BrowserRouter } from 'react-router-dom';
-import { Web3Provider } from './context/Web3Context';
-import { ThemeProvider } from './context/ThemeContext';
-import { NotificationProvider } from './context/NotificationContext';
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
+import { Provider } from 'react-redux'
+import { store } from './store'   // <-- make sure this exists
+
+import App from './App.jsx'
+import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <Web3Provider>
-        <ThemeProvider>
-          <NotificationProvider>
-            <App />
-          </NotificationProvider>
-        </ThemeProvider>
-      </Web3Provider>
-    </BrowserRouter>
+    <Provider store={store}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </Provider>
   </React.StrictMode>
-);
+)
