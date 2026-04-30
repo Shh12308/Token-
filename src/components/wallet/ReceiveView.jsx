@@ -10,7 +10,7 @@ import {
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import QRCode from 'react-qr-code';
 
-import api from '../utils/api'; // ✅ backend connection
+import api from '../../utils/api'; // ✅ backend connection
 
 const ReceiveView = ({ goBack }) => {
   const [address, setAddress] = useState('');
