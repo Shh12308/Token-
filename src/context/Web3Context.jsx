@@ -3,7 +3,16 @@ import { ethers } from 'ethers';
 import { getLocalAccount } from '../utils/storage';
 import { decryptData } from '../utils/crypto';
 
-export const Web3Context = createContext();
+export const Web3Context = createContext({
+  account: null,
+  seed: null,
+  wallet: null,
+  provider: null,
+  network: null,
+  error: null,
+  unlockWallet: async () => {},
+  logout: () => {},
+});
 
 export const Web3Provider = ({ children }) => {
   const [account, setAccount] = useState(null);
