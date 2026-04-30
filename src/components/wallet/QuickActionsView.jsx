@@ -1,33 +1,30 @@
 import React from 'react';
 
-const QuickActionsView = ({ setView }) => {
+const QuickActionsView = ({ navigate }) => {
   return (
-    <div className="quick-actions-view">
-      <h2>What would you like to do?</h2>
+    <div className="p-6">
+      <h2 className="text-xl mb-6 font-semibold">Wallet</h2>
 
-      <div className="action-grid">
-        <button className="action-card" onClick={() => setView('swap')}>
-          <span className="icon">🔄</span>
-          <span>Swap Crypto</span>
+      <div className="grid grid-cols-2 gap-4">
+        <button onClick={() => navigate('send')} className="btn-primary">
+          Send
         </button>
 
-        <button className="action-card">
-          <span className="icon">💳</span>
-          <span>Buy with Fiat</span>
+        <button onClick={() => navigate('receive')} className="btn-primary">
+          Receive
         </button>
 
-        <button className="action-card" onClick={() => setView('send')}>
-          <span className="icon">💸</span>
-          <span>Send Crypto</span>
+        <button onClick={() => navigate('swap')} className="btn-secondary">
+          Swap
         </button>
 
-        <button className="action-card" onClick={() => setView('receive')}>
-          <span className="icon">📥</span>
-          <span>Receive</span>
+        <button className="btn-secondary">
+          Buy
         </button>
       </div>
     </div>
   );
+};
 };
 
 export default QuickActionsView;
