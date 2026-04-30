@@ -1,12 +1,106 @@
 /* src/index.css */
 
-/* Tailwind base imports */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Your custom styles */
+/* ===== ROOT THEME ===== */
+:root {
+  --bg-main: #0b0f1a;
+  --bg-card: #121826;
+  --bg-glass: rgba(255, 255, 255, 0.05);
+
+  --accent-primary: #4f46e5;
+  --accent-secondary: #22c55e;
+  --accent-danger: #ef4444;
+
+  --text-primary: #ffffff;
+  --text-secondary: #9ca3af;
+
+  --border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ===== GLOBAL ===== */
 body {
-  @apply bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+  background: radial-gradient(circle at top, #1a2238, #0b0f1a);
+  color: var(--text-primary);
   font-family: system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+/* ===== GLASS CARD ===== */
+.glass-card {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+/* ===== BUTTONS ===== */
+.btn-primary {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  background: #1f2937;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 10px;
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: white;
+}
+
+/* ===== INPUT ===== */
+.input {
+  background: #0f172a;
+  border: 1px solid var(--border-color);
+  padding: 10px;
+  border-radius: 10px;
+  width: 100%;
+}
+
+/* ===== NAVBAR ===== */
+.wallet-navbar {
+  @apply flex items-center justify-between px-4 py-3;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* ===== SIDEBAR ===== */
+.wallet-sidebar {
+  width: 260px;
+  background: #0f172a;
+  border-right: 1px solid var(--border-color);
+}
+
+/* ===== GRID ===== */
+.wallet-grid {
+  @apply grid grid-cols-2 gap-4;
+}
+
+/* ===== NFT CARD ===== */
+.nft-card {
+  @apply rounded-xl overflow-hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  transition: 0.2s;
+}
+
+.nft-card:hover {
+  transform: scale(1.03);
 }
