@@ -7,7 +7,7 @@ import { copyToClipboard } from '../../utils/helpers.js';
 import { decryptData } from '../../utils/crypto.js';
 
 const STORAGE_KEY = 'cryptoBeanAccount';
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
 const getLocalAccount = () => {
   const data = localStorage.getItem(STORAGE_KEY);
