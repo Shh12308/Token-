@@ -4,6 +4,10 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import './index.css'
 
+// ✅ ADD THIS
+import { Buffer } from 'buffer'
+window.Buffer = Buffer
+
 const rootElement = document.getElementById('root')
 
 if (!rootElement) {
