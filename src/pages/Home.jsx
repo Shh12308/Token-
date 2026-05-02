@@ -13,7 +13,7 @@ import {
 // If your file is named Home.css, uncomment the line below:
 // import './Home.css'; 
 
-const BACKEND_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+const BACKEND_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
 // --- MOCK STYLED COMPONENTS (If you don't have the imports) ---
 // These allow the page to render structure. Your CSS should style the classes inside.
@@ -49,7 +49,7 @@ const Home = () => {
     // Auth Check
     if (!token) {
       console.log("No token found, redirecting to login...");
-      navigate('/auth/login');
+      navigate('/auth/register');
       return;
     }
 
