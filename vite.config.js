@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import nodePolyfills from 'vite-plugin-node-polyfills'
+import { nodePolyfills } from 'vite-plugin-node-polyfills' // ✅ FIXED
 
 export default defineConfig({
   plugins: [
@@ -12,7 +12,7 @@ export default defineConfig({
   define: {
     global: 'window',
   },
-  base: './', // keep this for Vercel
+  base: './',
   build: {
     outDir: 'dist',
     emptyOutDir: true
