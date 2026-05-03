@@ -1,23 +1,14 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-import App from './App'
-import './index.css'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
 
-// ✅ ADD THIS
-import { Buffer } from 'buffer'
-window.Buffer = Buffer
+// Create a root element
+const root = ReactDOM.createRoot(document.getElementById('root'));
 
-const rootElement = document.getElementById('root')
-
-if (!rootElement) {
-  throw new Error('Root element not found in index.html')
-}
-
-ReactDOM.createRoot(rootElement).render(
+// Render the main App component
+root.render(
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <App />
   </React.StrictMode>
-)
+);
