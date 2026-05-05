@@ -1,39 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import axios from 'axios'; // 1. Import Axios
 import { 
-  FiTrendingUp, FiSearch, FiGrid, FiActivity, 
-  FiGlobe, FiSettings, FiDollarSign, FiArrowUpRight,
+  FiHome, FiTrendingUp, FiSearch, FiGrid, FiActivity, 
+  FiGlobe, FiSettings, FiLock, FiUser, FiDollarSign, FiArrowUpRight,
   FiArrowDownLeft, FiClock, FiZap, FiShield, FiChevronRight,
   FiRefreshCw, FiEye, FiEyeOff, FiCopy, FiExternalLink
 } from 'react-icons/fi';
 
-// 1. IMPORT YOUR CSS FILE HERE
-// If your file is named Home.css, uncomment the line below:
-// import './Home.css'; 
+const BACKEND_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
-const BACKEND_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
-
-// --- MOCK STYLED COMPONENTS (If you don't have the imports) ---
-// These allow the page to render structure. Your CSS should style the classes inside.
-const DashboardContainer = ({ children }) => (
-  <div style={{ minHeight: '100vh', backgroundColor: '#121212', color: '#ffffff', fontFamily: 'sans-serif' }}>
-    {children}
-  </div>
-);
+// Assuming these styled components are imported or defined elsewhere in your file
+// If they are CSS classes, adjust the JSX accordingly.
+const DashboardContainer = ({ children }) => <div className="dashboard-container">{children}</div>;
 const AnimatedBackground = () => <div className="animated-background" />;
-const WalletCard = ({ children }) => <div className="wallet-card" style={{ background: '#1e1e1e', padding: '20px', borderRadius: '16px', margin: '20px' }}>{children}</div>;
-const QuickActions = ({ children }) => <div className="quick-actions" style={{ padding: '0 20px' }}>{children}</div>;
-const MarketOverview = ({ children }) => <div className="market-overview" style={{ padding: '20px' }}>{children}</div>;
-const RecentTransactions = ({ children }) => <div className="recent-transactions" style={{ padding: '20px' }}>{children}</div>;
+const WalletCard = ({ children }) => <div className="wallet-card">{children}</div>;
+const QuickActions = ({ children }) => <div className="quick-actions">{children}</div>;
+const MarketOverview = ({ children }) => <div className="market-overview">{children}</div>;
+const RecentTransactions = ({ children }) => <div className="recent-transactions">{children}</div>;
+
 const NetworkStatus = ({ network }) => <div className="network-status">{network || 'Ethereum'}</div>;
 
 const Home = () => {
   const navigate = useNavigate();
   
-  // State
-  const [balances, setBalances] = useState({ usdValue: 0 });
+  // 2. Local State instead of Redux for direct Backend connection
+  const [balances, setBalances] = useState({});
   const [marketData, setMarketData] = useState([]);
   const [selectedNetwork, setSelectedNetwork] = useState('ethereum');
   const [walletAddress, setWalletAddress] = useState('');
@@ -42,57 +35,51 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // 3. Auth Check & Data Fetching
   useEffect(() => {
-    console.log("Home Component Mounted");
     const token = localStorage.getItem('authToken');
     
-    // Auth Check
+    // REDIRECT LOGIC: If not logged in, go to Login page
     if (!token) {
-      console.log("No token found, redirecting to login...");
-      navigate('/auth/register');
+      navigate('/auth/login');
       return;
     }
 
     const fetchData = async () => {
       try {
-        console.log("Fetching dashboard data...");
         setLoading(true);
-
-        // Fetch Wallets
+        
+        // A. Fetch Wallet Data
         const walletRes = await axios.get(`${BACKEND_URL}/wallets`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
-        console.log("Wallets response:", walletRes.data);
-        
         if (walletRes.data.wallets && walletRes.data.wallets.length > 0) {
           const primaryWallet = walletRes.data.wallets[0];
           setWalletAddress(primaryWallet.address);
+          // Calculate total balance from the first wallet (simple example)
+          // In production, you would sum up balances across all wallets/tokens
           const nativeBal = parseFloat(primaryWallet.balances?.native || 0);
-          setBalances({ usdValue: nativeBal * 2000 }); // Mock price
+          setBalances({ 
+            usdValue: nativeBal * 2000 // Mock conversion or fetch price from marketData
+          });
         }
 
-        // Fetch Market
+        // B. Fetch Market Data
+        // Fetching top 5 coins for the dashboard
         const marketRes = await axios.get(`${BACKEND_URL}/market?symbols=ethereum,bitcoin,binancecoin,matic-network,solana`);
         if (marketRes.data.data) {
           setMarketData(marketRes.data.data);
         }
 
       } catch (err) {
-        console.error("Dashboard Error:", err);
+        console.error('Dashboard fetch error:', err);
+        // If token is invalid (401), logout and redirect
         if (err.response?.status === 401) {
           localStorage.removeItem('authToken');
           navigate('/auth/login');
         } else {
-          // If backend is down, use mock data to prevent blank page
-          console.warn("Backend connection failed, using mock data");
-          setMarketData([
-            { id: 'bitcoin', name: 'Bitcoin', symbol: 'btc', current_price: 45000, price_change_percentage_24h: 2.5, image: 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png' },
-            { id: 'ethereum', name: 'Ethereum', symbol: 'eth', current_price: 3000, price_change_percentage_24h: 1.2, image: 'https://assets.coingecko.com/coins/images/279/large/ethereum.png' },
-            { id: 'binancecoin', name: 'BNB', symbol: 'bnb', current_price: 400, price_change_percentage_24h: -0.5, image: 'https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png' },
-            { id: 'matic-network', name: 'Polygon', symbol: 'matic', current_price: 0.8, price_change_percentage_24h: 5.0, image: 'https://assets.coingecko.com/coins/images/4713/large/matic-network-icon.png' }
-          ]);
-          setError('Using offline data (Backend unreachable)');
+          setError('Failed to load dashboard data');
         }
       } finally {
         setLoading(false);
@@ -100,24 +87,28 @@ const Home = () => {
     };
 
     fetchData();
+
+    // Set up polling for real-time updates (every 30s)
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [navigate]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    window.location.reload();
+    // Trigger the fetch logic again (refactor fetchData to be reusable if desired, or just reload)
+    window.location.reload(); 
+    setTimeout(() => setRefreshing(false), 1000);
   };
 
-  // DEBUG: If loading, show something visible
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'white', background: '#121212' }}>
-        <div>Loading CryptoBean...</div>
+      <div className="loading-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div className="spinner">Loading...</div>
       </div>
     );
   }
 
+  // Calculate totals based on fetched data
   const totalBalance = Object.values(balances).reduce((acc, balance) => acc + (balance.usdValue || 0), 0);
   const totalChange = marketData.length > 0 
     ? marketData.reduce((acc, crypto) => acc + (crypto.price_change_percentage_24h || 0), 0) / marketData.length 
@@ -127,40 +118,38 @@ const Home = () => {
     <DashboardContainer>
       <AnimatedBackground />
       
-      {/* Force opacity 1 to prevent framer-motion hiding issues */}
       <motion.div
-        initial={{ opacity: 0 }} // Kept for smooth load, but container has bg
-        animate={{ opacity: 1 }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="dashboard-content"
-        style={{ padding: '20px', paddingBottom: '100px' }} // Ensure bottom padding
       >
-        {/* Error Message (if any) */}
-        {error && (
-          <div style={{ background: 'red', color: 'white', padding: '10px', marginBottom: '10px', borderRadius: '8px' }}>
-            {error}
-          </div>
-        )}
-
         {/* Header */}
-        <header className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <header className="dashboard-header">
           <div className="header-top">
-            <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div className="logo" style={{ fontSize: '24px', fontWeight: 'bold' }}>
+            <div className="logo-section">
+              <div className="logo">
                 <span className="logo-icon">🫘</span>
-                <span className="logo-text" style={{ marginLeft: '5px' }}>CryptoBean</span>
+                <span className="logo-text">CryptoBean</span>
               </div>
               <NetworkStatus network={selectedNetwork} />
             </div>
             
-            <div className="header-actions" style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={handleRefresh} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
-                <FiRefreshCw className={refreshing ? 'spin' : ''} />
+            <div className="header-actions">
+              <button 
+                onClick={handleRefresh}
+                className={`refresh-btn ${refreshing ? 'spinning' : ''}`}
+                disabled={refreshing}
+              >
+                <FiRefreshCw />
               </button>
-              <button onClick={() => navigate('/search')} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+              <button onClick={() => navigate('/search')} className="search-btn">
                 <FiSearch />
               </button>
-              <button onClick={() => navigate('/settings')} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+              <button onClick={() => navigate('/browser')} className="browser-btn">
+                <FiGlobe />
+              </button>
+              <button onClick={() => navigate('/settings')} className="settings-btn">
                 <FiSettings />
               </button>
             </div>
@@ -169,166 +158,236 @@ const Home = () => {
 
         {/* Main Wallet Card */}
         <WalletCard>
-          <div className="wallet-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <div className="wallet-header">
             <div className="balance-section">
-              <div className="balance-label" style={{ color: '#aaa', fontSize: '14px', marginBottom: '5px' }}>Total Balance</div>
-              <div className="balance-amount" style={{ display: 'flex', alignItems: 'center', fontSize: '32px', fontWeight: 'bold' }}>
+              <div className="balance-label">Total Balance</div>
+              <div className="balance-amount">
                 {showBalance ? (
                   <>
                     <span className="currency">$</span>
-                    <span className="amount" style={{ marginLeft: '5px' }}>
-                      {totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
+                    <span className="amount">{totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </>
                 ) : (
                   <span className="hidden-balance">••••••••</span>
                 )}
                 <button 
                   onClick={() => setShowBalance(!showBalance)}
-                  style={{ background: 'none', border: 'none', color: '#aaa', marginLeft: '10px', cursor: 'pointer' }}
+                  className="toggle-visibility"
                 >
                   {showBalance ? <FiEyeOff /> : <FiEye />}
                 </button>
               </div>
-              <div className={`balance-change ${totalChange >= 0 ? 'positive' : 'negative'}`} style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '5px', fontSize: '14px' }}>
+              <div className={`balance-change ${totalChange >= 0 ? 'positive' : 'negative'}`}>
                 {totalChange >= 0 ? <FiArrowUpRight /> : <FiArrowDownLeft />}
-                <span style={{ color: totalChange >= 0 ? '#00c853' : '#ff3d00' }}>
-                  {Math.abs(totalChange).toFixed(2)}% (24h)
-                </span>
+                <span>{Math.abs(totalChange).toFixed(2)}% (24h)</span>
               </div>
             </div>
             
-            <div className="wallet-address" style={{ background: '#2a2a2a', padding: '8px 12px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => navigator.clipboard.writeText(walletAddress)}>
-              <span className="address-text" style={{ fontSize: '12px' }}>{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</span>
-              <FiCopy size={14} style={{ color: '#aaa' }} />
+            <div className="wallet-address">
+              <span className="address-text">{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</span>
+              <button onClick={() => navigator.clipboard.writeText(walletAddress)}>
+                <FiCopy />
+              </button>
             </div>
           </div>
           
-          <div className="wallet-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-            <button onClick={() => navigate('/wallet')} className="action-btn primary" style={{ background: '#4caf50', border: 'none', color: 'white', padding: '12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+          <div className="wallet-actions">
+            <button onClick={() => navigate('/wallet')} className="action-btn primary">
               <FiArrowUpRight />
-              <span style={{ fontSize: '12px' }}>Send</span>
+              <span>Send</span>
             </button>
-            <button onClick={() => navigate('/wallet')} className="action-btn secondary" style={{ background: '#333', border: 'none', color: 'white', padding: '12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+            <button onClick={() => navigate('/wallet')} className="action-btn secondary">
               <FiArrowDownLeft />
-              <span style={{ fontSize: '12px' }}>Receive</span>
+              <span>Receive</span>
             </button>
-            <button onClick={() => navigate('/wallet')} className="action-btn secondary" style={{ background: '#333', border: 'none', color: 'white', padding: '12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+            <button onClick={() => navigate('/wallet')} className="action-btn secondary">
               <FiRefreshCw />
-              <span style={{ fontSize: '12px' }}>Swap</span>
+              <span>Swap</span>
             </button>
-            <button onClick={() => navigate('/crypto-sticks')} className="action-btn secondary" style={{ background: '#333', border: 'none', color: 'white', padding: '12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+            <button onClick={() => navigate('/crypto-sticks')} className="action-btn secondary">
               <FiZap />
-              <span style={{ fontSize: '12px' }}>Stake</span>
+              <span>Stake</span>
             </button>
           </div>
         </WalletCard>
 
         {/* Quick Actions Grid */}
         <QuickActions>
-          <div className="actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px' }}>
-            {/* Generating buttons dynamically or manually for brevity */}
-            {[
-              { icon: <FiTrendingUp />, label: 'Crypto Sticks', sub: 'Stake & Earn', route: '/crypto-sticks' },
-              { icon: <FiDollarSign />, label: 'DeFi', sub: 'Yield Farming', route: '/defi' },
-              { icon: <FiGrid />, label: 'NFTs', sub: 'Marketplace', route: '/nft' },
-              { icon: <FiGlobe />, label: 'Browser', sub: 'DApps & Web3', route: '/browser' },
-              { icon: <FiActivity />, label: 'Activity', sub: 'Transactions', route: '/activity' },
-              { icon: <FiShield />, label: 'Security', sub: 'Protection', route: '/security' },
-            ].map((action, idx) => (
-              <motion.button 
-                key={idx}
-                onClick={() => navigate(action.route)}
-                className="action-card"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                style={{ background: '#1e1e1e', border: 'none', color: 'white', padding: '15px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                  <div style={{ background: '#333', padding: '10px', borderRadius: '50%' }}>{action.icon}</div>
-                  <div style={{ textAlign: 'left' }}>
-                    <h3 style={{ margin: 0, fontSize: '16px' }}>{action.label}</h3>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#aaa' }}>{action.sub}</p>
-                  </div>
-                </div>
-                <FiChevronRight color="#555" />
-              </motion.button>
-            ))}
-          </div>
+          <motion.div 
+            className="actions-grid"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, staggerChildren: 0.1 }}
+          >
+            <motion.button 
+              onClick={() => navigate('/crypto-sticks')}
+              className="action-card"
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <div className="action-icon">
+                <FiTrendingUp />
+              </div>
+              <div className="action-content">
+                <h3>Crypto Sticks</h3>
+                <p>Stake & Earn</p>
+              </div>
+              <FiChevronRight className="action-arrow" />
+            </motion.button>
+
+            <motion.button 
+              onClick={() => navigate('/defi')}
+              className="action-card"
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <div className="action-icon">
+                <FiDollarSign />
+              </div>
+              <div className="action-content">
+                <h3>DeFi</h3>
+                <p>Yield Farming</p>
+              </div>
+              <FiChevronRight className="action-arrow" />
+            </motion.button>
+
+            <motion.button 
+              onClick={() => navigate('/nft')}
+              className="action-card"
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <div className="action-icon">
+                <FiGrid />
+              </div>
+              <div className="action-content">
+                <h3>NFTs</h3>
+                <p>Marketplace</p>
+              </div>
+              <FiChevronRight className="action-arrow" />
+            </motion.button>
+
+            <motion.button 
+              onClick={() => navigate('/browser')}
+              className="action-card"
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <div className="action-icon">
+                <FiGlobe />
+              </div>
+              <div className="action-content">
+                <h3>Browser</h3>
+                <p>DApps & Web3</p>
+              </div>
+              <FiChevronRight className="action-arrow" />
+            </motion.button>
+
+            <motion.button 
+              onClick={() => navigate('/activity')}
+              className="action-card"
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <div className="action-icon">
+                <FiActivity />
+              </div>
+              <div className="action-content">
+                <h3>Activity</h3>
+                <p>Transactions</p>
+              </div>
+              <FiChevronRight className="action-arrow" />
+            </motion.button>
+
+            <motion.button 
+              onClick={() => navigate('/security')}
+              className="action-card"
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <div className="action-icon">
+                <FiShield />
+              </div>
+              <div className="action-content">
+                <h3>Security</h3>
+                <p>Protection</p>
+              </div>
+              <FiChevronRight className="action-arrow" />
+            </motion.button>
+          </motion.div>
         </QuickActions>
 
         {/* Market Overview */}
         <MarketOverview>
-          <h2 className="section-title" style={{ marginBottom: '15px' }}>Market Overview</h2>
-          <div className="market-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+          <h2 className="section-title">Market Overview</h2>
+          <div className="market-grid">
             {marketData.slice(0, 4).map((crypto, index) => (
-              <div 
-                key={crypto.id || index}
+              <motion.div 
+                key={crypto.id}
                 className="market-card"
-                style={{ background: '#1e1e1e', padding: '15px', borderRadius: '12px' }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + index * 0.1 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                  <img src={crypto.image} alt={crypto.name} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
-                  <div>
-                    <span style={{ fontWeight: 'bold', display: 'block' }}>{crypto.name}</span>
-                    <span style={{ fontSize: '12px', color: '#aaa' }}>{crypto.symbol?.toUpperCase()}</span>
+                <div className="market-header">
+                  <img src={crypto.image} alt={crypto.name} className="crypto-icon" />
+                  <div className="crypto-info">
+                    <span className="crypto-name">{crypto.name}</span>
+                    <span className="crypto-symbol">{crypto.symbol.toUpperCase()}</span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 'bold' }}>${crypto.current_price?.toLocaleString()}</span>
-                  <span style={{ 
-                    color: crypto.price_change_percentage_24h >= 0 ? '#00c853' : '#ff3d00',
-                    fontSize: '12px',
-                    background: crypto.price_change_percentage_24h >= 0 ? 'rgba(0,200,83,0.1)' : 'rgba(255,61,0,0.1)',
-                    padding: '2px 6px',
-                    borderRadius: '4px'
-                  }}>
+                <div className="market-price">
+                  <span className="price">${crypto.current_price?.toLocaleString() || '0.00'}</span>
+                  <span className={`change ${crypto.price_change_percentage_24h >= 0 ? 'positive' : 'negative'}`}>
                     {crypto.price_change_percentage_24h >= 0 ? '+' : ''}
-                    {crypto.price_change_percentage_24h?.toFixed(2)}%
+                    {crypto.price_change_percentage_24h?.toFixed(2) || '0.00'}%
                   </span>
                 </div>
-              </div>
+                <div className="market-chart">
+                  {/* Mini chart placeholder */}
+                  <div className="mini-chart"></div>
+                </div>
+              </motion.div>
             ))}
           </div>
         </MarketOverview>
 
         {/* Recent Transactions */}
         <RecentTransactions>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <div className="section-header">
             <h2 className="section-title">Recent Activity</h2>
-            <button onClick={() => navigate('/activity')} style={{ background: 'none', border: 'none', color: '#4caf50', cursor: 'pointer', fontSize: '14px' }}>
-              View All
+            <button onClick={() => navigate('/activity')} className="view-all">
+              View All <FiExternalLink />
             </button>
           </div>
           <div className="transactions-list">
-            {marketData.length === 0 ? (
-               <div style={{ textAlign: 'center', color: '#777', padding: '20px' }}>No recent activity</div>
-            ) : (
-              [1, 2, 3].map((item) => (
-                <div 
-                  key={item}
-                  className="transaction-item"
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 0', borderBottom: '1px solid #333' }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <div style={{ background: '#333', padding: '10px', borderRadius: '50%' }}>
-                      {item % 2 === 0 ? <FiArrowUpRight /> : <FiArrowDownLeft />}
-                    </div>
-                    <div>
-                      <span style={{ display: 'block', fontWeight: 'bold' }}>
-                        {item % 2 === 0 ? 'Sent' : 'Received'} ETH
-                      </span>
-                      <span style={{ fontSize: '12px', color: '#aaa' }}>
-                        <FiClock style={{ marginRight: '5px' }} /> {item}h ago
-                      </span>
-                    </div>
-                  </div>
-                  <div style={{ fontWeight: 'bold', color: item % 2 === 0 ? '#ff3d00' : '#00c853' }}>
-                    {item % 2 === 0 ? '-' : '+'}0.{item}5 ETH
-                  </div>
+            {/* In a real app, you would map over fetched transactions here */}
+            {[1, 2, 3].map((item) => (
+              <motion.div 
+                key={item}
+                className="transaction-item"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 + item * 0.1 }}
+              >
+                <div className="transaction-icon">
+                  {item % 2 === 0 ? <FiArrowUpRight /> : <FiArrowDownLeft />}
                 </div>
-              ))
-            )}
+                <div className="transaction-details">
+                  <span className="transaction-type">
+                    {item % 2 === 0 ? 'Sent' : 'Received'} ETH
+                  </span>
+                  <span className="transaction-time">
+                    <FiClock /> {item}h ago
+                  </span>
+                </div>
+                <div className="transaction-amount">
+                  <span className={item % 2 === 0 ? 'negative' : 'positive'}>
+                    {item % 2 === 0 ? '-' : '+'}0.{item}5 ETH
+                  </span>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </RecentTransactions>
       </motion.div>
