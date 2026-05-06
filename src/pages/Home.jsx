@@ -318,39 +318,46 @@ const Home = () => {
         </QuickActions>
 
         {/* Market Overview */}
-        <MarketOverview>
-          <h2 className="section-title">Market Overview</h2>
-          <div className="market-grid">
-            {marketData.slice(0, 4).map((crypto, index) => (
-              <motion.div 
-                key={crypto.id}
-                className="market-card"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + index * 0.1 }}
-              >
-                <div className="market-header">
-                  <img src={crypto.image} alt={crypto.name} className="crypto-icon" />
-                  <div className="crypto-info">
-                    <span className="crypto-name">{crypto.name}</span>
-                    <span className="crypto-symbol">{crypto.symbol.toUpperCase()}</span>
-                  </div>
-                </div>
-                <div className="market-price">
-                  <span className="price">${crypto.current_price?.toLocaleString() || '0.00'}</span>
-                  <span className={`change ${crypto.price_change_percentage_24h >= 0 ? 'positive' : 'negative'}`}>
-                    {crypto.price_change_percentage_24h >= 0 ? '+' : ''}
-                    {crypto.price_change_percentage_24h?.toFixed(2) || '0.00'}%
-                  </span>
-                </div>
-                <div className="market-chart">
-                  {/* Mini chart placeholder */}
-                  <div className="mini-chart"></div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </MarketOverview>
+        const MarketCard = ({ crypto }) => {
+  return (
+    <motion.div 
+      className="market-card"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3 }}
+    >
+      <div className="market-header">
+        <img src={crypto.image} alt={crypto.name} className="crypto-icon" />
+        <div className="crypto-info">
+          <span className="crypto-name">{crypto.name}</span>
+          <span className="crypto-symbol">{crypto.symbol.toUpperCase()}</span>
+        </div>
+      </div>
+      <div className="market-price">
+        <span className="price">${crypto.current_price?.toLocaleString() || '0.00'}</span>
+        <span className={`change ${crypto.price_change_percentage_24h >= 0 ? 'positive' : 'negative'}`}>
+          {crypto.price_change_percentage_24h >= 0 ? '+' : ''}
+          {crypto.price_change_percentage_24h?.toFixed(2) || '0.00'}%
+        </span>
+      </div>
+      <div className="market-chart">
+        {/* Mini chart placeholder */}
+        <div className="mini-chart"></div>
+      </div>
+    </motion.div>
+  );
+};
+
+// ...
+
+<MarketOverview>
+  <h2 className="section-title">Market Overview</h2>
+  <div className="market-grid">
+    {marketData.slice(0, 4).map((crypto, index) => (
+      <MarketCard key={crypto.id} crypto={crypto} />
+    ))}
+  </div>
+</MarketOverview>
 
         {/* Recent Transactions */}
         <RecentTransactions>
