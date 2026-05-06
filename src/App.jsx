@@ -9,6 +9,7 @@ import SettingsPage from './pages/SettingsPage'
 import CryptoSticks from './pages/CryptoSticks'
 import Search from './pages/Search'
 import NftMarketplace from './pages/NftMarketplace'
+import DeFi from './pages/DeFi'
 import Activity from './pages/Activity'
 import Security from './pages/Security'
 import Browser from './pages/Browser'
@@ -24,11 +25,13 @@ const App = () => {
       <Routes>
 
         <Route path="/" element={<Home />} />
-    
+        
+        <Route path="/home" element={<Home />} />
         <Route path="/wallet" element={<Wallet />} />
         <Route path="/crypto-sticks" element={<CryptoSticks />} />
         <Route path="/search" element={<Search />} />
         <Route path="/nft" element={<NftMarketplace />} />
+        <Route path="/defi" element={<DeFi />} />
         <Route path="/activity" element={<Activity />} />
         <Route path="/browser" element={<Browser />} />
         <Route path="/settings" element={<SettingsPage />} />
