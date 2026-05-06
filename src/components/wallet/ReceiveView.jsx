@@ -10,23 +10,26 @@ import {
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import QRCode from 'react-qr-code';
 
-import api from '../../utils/api'; // ✅ backend connection
+import api from '../../utils/api'; // backend connection
 
 const ReceiveView = ({ goBack }) => {
   const [address, setAddress] = useState('');
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchAddress = async () => {
       try {
-        // 🔥 call your backend
         const res = await api.get('/wallet/address');
 
-        // expected response: { address: "0x123..." }
-        setAddress(res.data.address);
+        if (res.data && res.data.address) {
+          setAddress(res.data.address);
+        } else {
+          setError('Invalid response data');
+        }
       } catch (err) {
-        console.error('Failed to fetch wallet address:', err);
+        setError('Failed to fetch wallet address');
       } finally {
         setLoading(false);
       }
@@ -50,6 +53,14 @@ const ReceiveView = ({ goBack }) => {
     );
   }
 
+  if (error) {
+    return (
+      <Box sx={{ mt: 5, textAlign: 'center', color: '#fff' }}>
+        <Typography>Error: {error}</Typography>
+      </Box>
+    );
+  }
+
   if (!address) {
     return (
       <Box sx={{ mt: 5, textAlign: 'center', color: '#fff' }}>
@@ -61,7 +72,6 @@ const ReceiveView = ({ goBack }) => {
   return (
     <Box sx={{ maxWidth: 400, mx: 'auto', mt: 5, textAlign: 'center' }}>
       
-      {/* Back Button (mobile UX) */}
       <button onClick={goBack} className="mb-4">
         ← Back
       </button>
