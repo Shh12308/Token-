@@ -319,7 +319,7 @@ const Home = () => {
 
         {/* Market Overview */}
         const MarketCard = ({ crypto }) => {
-  
+  return (
     <motion.div 
       className="market-card"
       initial={{ opacity: 0, y: 20 }}
@@ -333,22 +333,19 @@ const Home = () => {
           <span className="crypto-symbol">{crypto.symbol.toUpperCase()}</span>
         </div>
       </div>
+
       <div className="market-price">
-        <span className="price">${crypto.current_price?.toLocaleString() || '0.00'}</span>
+        <span className="price">
+          ${crypto.current_price?.toLocaleString() || '0.00'}
+        </span>
         <span className={`change ${crypto.price_change_percentage_24h >= 0 ? 'positive' : 'negative'}`}>
           {crypto.price_change_percentage_24h >= 0 ? '+' : ''}
           {crypto.price_change_percentage_24h?.toFixed(2) || '0.00'}%
         </span>
       </div>
-      <div className="market-chart">
-        {/* Mini chart placeholder */}
-        <div className="mini-chart"></div>
-      </div>
     </motion.div>
   );
 };
-
-// ...
 
 <MarketOverview>
   <h2 className="section-title">Market Overview</h2>
