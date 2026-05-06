@@ -22,6 +22,35 @@ const RecentTransactions = ({ children }) => <div className="recent-transactions
 
 const NetworkStatus = ({ network }) => <div className="network-status">{network || 'Ethereum'}</div>;
 
+const MarketCard = ({ crypto }) => {
+  return (
+    <motion.div 
+      className="market-card"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3 }}
+    >
+      <div className="market-header">
+        <img src={crypto.image} alt={crypto.name} className="crypto-icon" />
+        <div className="crypto-info">
+          <span className="crypto-name">{crypto.name}</span>
+          <span className="crypto-symbol">{crypto.symbol.toUpperCase()}</span>
+        </div>
+      </div>
+
+      <div className="market-price">
+        <span className="price">
+          ${crypto.current_price?.toLocaleString() || '0.00'}
+        </span>
+        <span className={`change ${crypto.price_change_percentage_24h >= 0 ? 'positive' : 'negative'}`}>
+          {crypto.price_change_percentage_24h >= 0 ? '+' : ''}
+          {crypto.price_change_percentage_24h?.toFixed(2) || '0.00'}%
+        </span>
+      </div>
+    </motion.div>
+  );
+};
+
 const Home = () => {
   const navigate = useNavigate();
   
@@ -318,34 +347,6 @@ const Home = () => {
         </QuickActions>
 
         {/* Market Overview */}
-        const MarketCard = ({ crypto }) => {
-  return (
-    <motion.div 
-      className="market-card"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.3 }}
-    >
-      <div className="market-header">
-        <img src={crypto.image} alt={crypto.name} className="crypto-icon" />
-        <div className="crypto-info">
-          <span className="crypto-name">{crypto.name}</span>
-          <span className="crypto-symbol">{crypto.symbol.toUpperCase()}</span>
-        </div>
-      </div>
-
-      <div className="market-price">
-        <span className="price">
-          ${crypto.current_price?.toLocaleString() || '0.00'}
-        </span>
-        <span className={`change ${crypto.price_change_percentage_24h >= 0 ? 'positive' : 'negative'}`}>
-          {crypto.price_change_percentage_24h >= 0 ? '+' : ''}
-          {crypto.price_change_percentage_24h?.toFixed(2) || '0.00'}%
-        </span>
-      </div>
-    </motion.div>
-  );
-};
 
 <MarketOverview>
   <h2 className="section-title">Market Overview</h2>
