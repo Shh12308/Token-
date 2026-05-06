@@ -74,11 +74,15 @@ export const Web3Provider = ({ children }) => {
       setSeed(decryptedSeed);
       setWallet(walletInstance);
 
-      const net = await provider.getNetwork();
-      setNetwork(net);
+      try {
+        const net = await provider.getNetwork();
+        setNetwork(net);
+      } catch (err) {
+        console.error("Network detection failed:", err);
+        throw new Error("Failed to detect network");
+      }
 
       return walletInstance;
-
     } catch (err) {
       console.error("Unlock wallet error:", err);
       setError(err.message);
