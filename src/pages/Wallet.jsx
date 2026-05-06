@@ -45,7 +45,7 @@ const Wallet = () => {
         return <SwapView goBack={goBack} />;
       default:
         return <QuickActionsView navigate={navigate} />;
-    }
+    
   };
 
   return (
