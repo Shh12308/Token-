@@ -319,7 +319,7 @@ const Home = () => {
 
         {/* Market Overview */}
         const MarketCard = ({ crypto }) => {
-  return (
+  
     <motion.div 
       className="market-card"
       initial={{ opacity: 0, y: 20 }}
