@@ -1,16 +1,23 @@
 // src/utils/wallet.js
-import * as bip39 from "bip39";
+import { ethers } from 'ethers';
 
-// Generate 12-word seed phrase
-export function generateSeedPhrase() {
-  const mnemonic = bip39.generateMnemonic(128); // 128 bits = 12 words
-  return mnemonic.split(" ");
-}
+export const generateSeedPhrase = () => {
+  // Generates a random 12 or 24 word mnemonic
+  const entropy = window.crypto.getRandomValues(new Uint8Array(16)); // 128 bits for 12 words
+  const mnemonic = ethers.entropyToMnemonic(entropy);
+  return mnemonic.split(' ');
+};
 
-// Validate phrase (useful for recovery login)
-export function validateSeedPhrase(phrase) {
-  if (Array.isArray(phrase)) {
-    phrase = phrase.join(" ");
+export const copyToClipboard = (text) => {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text);
+  } else {
+    // Fallback
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textArea);
   }
-  return bip39.validateMnemonic(phrase);
-}
+};
