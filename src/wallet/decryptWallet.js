@@ -1,23 +1,35 @@
 // src/wallet/decryptWallet.js
-import { deriveKeyFromPasscode, decryptData } from '../utils/crypto';
+import { deriveKeyFromPasscode, encryptData } from '../utils/wallet';
+import { ethers } from 'ethers';
 
+// Note: In a real app, you need the specific salt used during encryption.
+// We are passing a placeholder here, but you should store the salt with the wallet.
 export const decryptWallet = async (encryptedString, passcode, ivString) => {
-  // 1. Derive the key using the passcode
-  // Note: In a real app, you must fetch the specific salt used during encryption.
-  // For this implementation to match your existing code structure, we assume
-  // a deterministic derivation or the salt was passed implicitly. 
-  // Ideally, add 'salt' to your stored wallet object.
-  const key = await deriveKeyFromPasscode(passcode, 'global-salt-placeholder'); 
-  
-  // 2. Decrypt the seed phrase
-  const decryptedSeed = await decryptData(encryptedString, key, ivString);
-  
-  // 3. Reconstruct Wallet from Seed
-  // We return an object mimicking your existing usage
-  const wallet = ethers.Wallet.fromPhrase(decryptedSeed);
-  
-  return {
-    privateKey: wallet.privateKey,
-    address: wallet.address
-  };
+  try {
+    // 1. Derive Key
+    const key = await deriveKeyFromPasscode(passcode, 'global-salt-placeholder'); 
+    
+    // 2. Decrypt (using the same logic as encrypt, just reversed via subtle API)
+    const dec = new TextDecoder();
+    const iv = new Uint8Array(ivString.split('').map(c => c.charCodeAt(0)));
+    const data = new Uint8Array(encryptedString.split('').map(c => c.charCodeAt(0)));
+
+    const decrypted = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv },
+      key,
+      data
+    );
+    
+    const seedPhrase = dec.decode(decrypted);
+
+    // 3. Reconstruct Wallet
+    const wallet = ethers.Wallet.fromPhrase(seedPhrase);
+    
+    return {
+      privateKey: wallet.privateKey,
+      address: wallet.address
+    };
+  } catch (e) {
+    throw new Error("Decryption failed. Check passcode.");
+  }
 };
