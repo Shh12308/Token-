@@ -7,8 +7,7 @@ import { copyToClipboard } from '../../utils/helpers';
 import { deriveKeyFromPasscode, encryptData } from '../../utils/crypto';
 
 const BACKEND_URL =
-  process.env.REACT_APP_API_URL ||
-  'https://blockvault-backend-production.up.railway.app/api';
+  process.env.REACT_APP_API_URL ||'https://blockvault-backend-production.up.railway.app/api';
 
 const ProgressBar = ({ step }) => (
   <div className="progress-bar">
