@@ -3,9 +3,23 @@ import { ethers } from 'ethers';
 
 // FIX: Use Wallet.createRandom(). This works in BOTH Ethers v5 and v6
 export const generateSeedPhrase = () => {
-  const wallet = ethers.Wallet.createRandom();
-  // wallet.mnemonic.phrase gives the 12 words
-  return wallet.mnemonic.phrase.split(' ');
+  try {
+    // FIX: Handle Ethers v5 vs v6
+    let wallet;
+    const randomWallet = ethers.Wallet.createRandom(); // createRandom works in both
+    
+    if (ethers.Wallet.fromPhrase) {
+       wallet = ethers.Wallet.fromPhrase(randomWallet.mnemonic.phrase);
+    } else {
+       wallet = ethers.Wallet.fromMnemonic(randomWallet.mnemonic.phrase);
+    }
+
+    // wallet.mnemonic.phrase gives the 12 words
+    return wallet.mnemonic.phrase.split(' ');
+  } catch (error) {
+    console.error("Seed generation failed:", error);
+    throw new Error("Secure environment required to generate wallet.");
+  }
 };
 
 export const copyToClipboard = (text) => {
