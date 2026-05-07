@@ -23,3 +23,5 @@ const QuickActionsView = ({ setView }) => {
     </div>
   );
 };
+
+export default QuickActionsView;
