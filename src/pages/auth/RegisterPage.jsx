@@ -79,14 +79,25 @@ const RegisterPage = () => {
     setLoading(true);
     setError('');
 
-    try {
-      const phraseString = seedPhrase.join(' ');
+try {
+    const phraseString = seedPhrase.join(' ');
 
-      // 1. Derive encryption key from passcode (LOCAL)
-      const key = await deriveKeyFromPasscode(passcode);
+    // FIX: Handle Ethers v5 vs v6
+    let wallet;
+    if (ethers.Wallet.fromPhrase) {
+      // Ethers v6
+      wallet = ethers.Wallet.fromPhrase(phraseString);
+    } else {
+      // Ethers v5
+      wallet = ethers.Wallet.fromMnemonic(phraseString);
+    }
 
-      // 2. Encrypt seed locally (SECURE STORAGE)
-      const encryptedSeed = await encryptData(phraseString, key);
+    // Derive encryption key from passcode
+    const key = await deriveKeyFromPasscode(passcode);
+
+    // encrypt seed locally
+    const encryptedSeed = await encryptData(phraseString, key);
+
 
       // 3. Create Wallet object (NON-CUSTODIAL)
       const wallet = ethers.Wallet.fromPhrase(phraseString);
