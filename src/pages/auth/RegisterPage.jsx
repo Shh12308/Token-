@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios'; // 1. Import Axios
-import { ethers } from 'ethers'; // 2. Import Ethers to derive address
+import axios from 'axios';
+import { ethers } from 'ethers';
 import { generateSeedPhrase } from '../../utils/wallet';
 import { copyToClipboard } from '../../utils/helpers';
 import { deriveKeyFromPasscode, encryptData } from '../../utils/crypto';
 
-const BACKEND_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
+const BACKEND_URL =
+  process.env.REACT_APP_API_URL ||
+  'https://blockvault-backend-production.up.railway.app/api';
 
 const ProgressBar = ({ step }) => (
   <div className="progress-bar">
@@ -23,10 +25,8 @@ const SeedPhraseGrid = ({ phrase }) => (
         key={index}
         className="seed-word"
         onClick={() => copyToClipboard(word)}
-        title="Click to copy"
       >
-        <span className="word-index">{index + 1}.</span>
-        <span className="word-text">{word}</span>
+        <span>{index + 1}. {word}</span>
       </div>
     ))}
   </div>
@@ -34,81 +34,80 @@ const SeedPhraseGrid = ({ phrase }) => (
 
 const RegisterPage = () => {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
+
+  const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
   const [passcode, setPasscode] = useState('');
+
   const [seedPhrase, setSeedPhrase] = useState([]);
-  const [isConfirmedSaved, setIsConfirmedSaved] = useState(false);
+  const [confirmWords, setConfirmWords] = useState({ w1: '', w2: '' });
+
+  const [savedConfirmed, setSavedConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Generate seed once
   useEffect(() => {
-    // Only generate the seed phrase once when entering step 3
-    if (currentStep === 3 && seedPhrase.length === 0) {
+    if (step === 3 && seedPhrase.length === 0) {
       setSeedPhrase(generateSeedPhrase());
     }
-  }, [currentStep, seedPhrase.length]);
+  }, [step, seedPhrase.length]);
 
-  const handleNext = () => {
-    if (currentStep < 3) setCurrentStep(currentStep + 1);
+  const nextStep = () => setStep((s) => Math.min(s + 1, 3));
+
+  const verifySeed = () => {
+    // pick 2 random words for verification
+    return seedPhrase[1] === confirmWords.w1 &&
+           seedPhrase[5] === confirmWords.w2;
   };
 
   const handleCreateAccount = async () => {
-    if (!isConfirmedSaved || passcode.length !== 6) return;
+    if (!savedConfirmed || passcode.length < 6) return;
+
+    if (!verifySeed()) {
+      setError('Seed phrase verification failed');
+      return;
+    }
 
     setLoading(true);
     setError('');
 
     try {
-      // 1️⃣ Derive encryption key from passcode
+      const phrase = seedPhrase.join(' ');
+
+      // derive encryption key from passcode
       const key = await deriveKeyFromPasscode(passcode);
 
-      // 2️⃣ Encrypt seed phrase locally
-      const encryptedSeed = await encryptData(seedPhrase.join(' '), key);
+      // encrypt seed locally
+      const encryptedSeed = await encryptData(phrase, key);
 
-      // 3️⃣ Register User on Backend
-      // We use the passcode as the 'password' for the backend account
-      const response = await axios.post(`${BACKEND_URL}/auth/register`, {
-        email,
-        password: passcode,
+      // create wallet locally (NON-custodial model)
+      const wallet = ethers.Wallet.fromPhrase(phrase);
+
+      // backend ONLY stores identity (NOT wallet control)
+      const res = await axios.post(`${BACKEND_URL}/auth/register`, {
+        email
       });
 
-      const { token, user } = response.data;
+      const { token, user } = res.data;
 
-      // 4️⃣ Store Backend Session
-      if (token) {
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('userInfo', JSON.stringify(user));
-      }
+      localStorage.setItem('authToken', token);
 
-      // 5️⃣ Store Encrypted Wallet Locally
-      // Note: The wallet address derived here is local. 
-      // To fully sync with backend features (like wallet history), 
-      // you would typically send the walletAddress to the backend 
-      // via a 'linkWallet' or 'updateProfile' call later.
-      const wallet = ethers.Wallet.fromPhrase(seedPhrase.join(' '));
-      
+      // store encrypted wallet locally ONLY
       localStorage.setItem(
-        'cryptoBeanAccount',
+        'wallet_data',
         JSON.stringify({
           email,
-          walletAddress: wallet.address, // Useful to store locally
+          address: wallet.address,
           encryptedSeed
         })
       );
 
-      // 6️⃣ Mark auth + onboarding complete
-      localStorage.setItem('cryptoBean_auth', 'true');
-      localStorage.setItem('cryptoBean_onboarded', 'true');
+      localStorage.setItem('onboarded', 'true');
 
-      // 7️⃣ Navigate to Dashboard
       navigate('/app/dashboard');
-
     } catch (err) {
-      console.error(err);
-      // Handle specific backend errors (e.g., email already exists)
-      const msg = err.response?.data?.message || err.message || 'Registration failed';
-      setError(msg);
+      setError(err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -117,98 +116,93 @@ const RegisterPage = () => {
   return (
     <div className="signup-page">
       <div className="signup-card">
-        <div className="card-header">
-          <h2>Create Your CryptoBean Account</h2>
-          <ProgressBar step={currentStep} />
-        </div>
+        <h2>Create Wallet</h2>
 
-        <div className="card-body">
-          {currentStep === 1 && (
-            <div className="auth-step">
-              <p>Enter your email or phone number.</p>
+        <ProgressBar step={step} />
+
+        {step === 1 && (
+          <div>
+            <input
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+
+            <button
+              disabled={!email.includes('@')}
+              onClick={nextStep}
+            >
+              Continue
+            </button>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div>
+            <input
+              type="password"
+              placeholder="6+ digit passcode"
+              value={passcode}
+              maxLength={12}
+              onChange={(e) =>
+                setPasscode(e.target.value.replace(/\s/g, ''))
+              }
+            />
+
+            <button
+              disabled={passcode.length < 6}
+              onClick={nextStep}
+            >
+              Next
+            </button>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div>
+            <h3>Save Your Seed Phrase</h3>
+
+            <SeedPhraseGrid phrase={seedPhrase} />
+
+            <button onClick={() => copyToClipboard(seedPhrase.join(' '))}>
+              Copy Phrase
+            </button>
+
+            <p>Verify your phrase:</p>
+
+            <input
+              placeholder="Word #2"
+              onChange={(e) =>
+                setConfirmWords({ ...confirmWords, w1: e.target.value })
+              }
+            />
+
+            <input
+              placeholder="Word #6"
+              onChange={(e) =>
+                setConfirmWords({ ...confirmWords, w2: e.target.value })
+              }
+            />
+
+            <label>
               <input
-                type="email"
-                className="input-primary"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="checkbox"
+                checked={savedConfirmed}
+                onChange={(e) => setSavedConfirmed(e.target.checked)}
               />
-              <button
-                className="button-primary"
-                onClick={handleNext}
-                disabled={!email.includes('@')}
-              >
-                Continue
-              </button>
-            </div>
-          )}
+              I saved my seed safely
+            </label>
 
-          {currentStep === 2 && (
-            <div className="auth-step">
-              <p>Create a 6-digit passcode. You'll use this to log in quickly and decrypt your wallet.</p>
-              <input
-                type="password"
-                className="input-primary input-passcode"
-                placeholder="Enter 6-digit passcode"
-                maxLength={6}
-                value={passcode}
-                onChange={(e) =>
-                  setPasscode(e.target.value.replace(/\D/g, ''))
-                }
-              />
-              <button
-                className="button-primary"
-                onClick={handleNext}
-                disabled={passcode.length !== 6}
-              >
-                Next
-              </button>
-            </div>
-          )}
+            <button
+              disabled={!savedConfirmed || loading}
+              onClick={handleCreateAccount}
+            >
+              {loading ? 'Creating...' : 'Create Wallet'}
+            </button>
 
-          {currentStep === 3 && (
-            <div className="auth-step seed-phrase-step">
-              <div className="warning-box">
-                <strong>⚠️ This is your master key.</strong>
-                <p>
-                  Save it somewhere safe and private. We cannot recover it for you.
-                </p>
-              </div>
-
-              <SeedPhraseGrid phrase={seedPhrase} />
-
-              <button
-                className="button-secondary"
-                onClick={() => copyToClipboard(seedPhrase.join(' '))}
-              >
-                Copy Entire Phrase
-              </button>
-
-              <div className="confirmations">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={isConfirmedSaved}
-                    onChange={(e) =>
-                      setIsConfirmedSaved(e.target.checked)
-                    }
-                  />
-                  I have securely saved my secret phrase.
-                </label>
-              </div>
-
-              <button
-                className="button-primary button-large"
-                onClick={handleCreateAccount}
-                disabled={!isConfirmedSaved || loading}
-              >
-                {loading ? 'Creating Account...' : 'Create Account'}
-              </button>
-
-              {error && <div className="error-message">{error}</div>}
-            </div>
-          )}
-        </div>
+            {error && <p style={{ color: 'red' }}>{error}</p>}
+          </div>
+        )}
       </div>
     </div>
   );
