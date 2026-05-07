@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ethers } from 'ethers';
+import { JsonRpcProvider } from 'ethers';
 import { getLocalAccount } from '../utils/storage';
 import { decryptData } from '../utils/crypto';
 
