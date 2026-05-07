@@ -1,20 +1,18 @@
-import React from 'react';
-
-const QuickActionsView = ({ navigate }) => {
+const QuickActionsView = ({ setView }) => {
   return (
     <div className="p-6">
       <h2 className="text-xl mb-6 font-semibold">Wallet</h2>
 
       <div className="grid grid-cols-2 gap-4">
-        <button onClick={() => navigate('send')} className="btn-primary">
+        <button onClick={() => setView('send')} className="btn-primary">
           Send
         </button>
 
-        <button onClick={() => navigate('receive')} className="btn-primary">
+        <button onClick={() => setView('receive')} className="btn-primary">
           Receive
         </button>
 
-        <button onClick={() => navigate('swap')} className="btn-secondary">
+        <button onClick={() => setView('swap')} className="btn-secondary">
           Swap
         </button>
 
@@ -25,5 +23,3 @@ const QuickActionsView = ({ navigate }) => {
     </div>
   );
 };
-
-export default QuickActionsView;
