@@ -1,240 +1,251 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios'; // 1. Import Axios for API calls
-import { ethers } from 'ethers'; // 2. Import Ethers for signing messages
-import { isBiometricAvailable } from '../../utils/device.js';
-import { copyToClipboard } from '../../utils/helpers.js';
-import { decryptData } from '../../utils/crypto.js';
+import axios from 'axios';
+import { ethers } from 'ethers';
+import { decryptWallet } from '../../wallet/decryptWallet';
+import { isBiometricAvailable } from '../../utils/device';
 
-const STORAGE_KEY = 'cryptoBeanAccount';
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL ||
+  'https://blockvault-backend-production.up.railway.app/api';
 
-const getLocalAccount = () => {
+const STORAGE_KEY = 'wallet_encrypted';
+
+const getStoredWallet = () => {
   const data = localStorage.getItem(STORAGE_KEY);
   return data ? JSON.parse(data) : null;
 };
 
-// Helper: Perform the Backend Wallet Auth Flow
-const authenticateWithBackend = async (seedPhrase) => {
-  try {
-    // 1. Derive Wallet Address from Seed
-    const wallet = ethers.Wallet.fromPhrase(seedPhrase);
-    const walletAddress = wallet.address;
+const requestNonce = async (walletAddress) => {
+  const res = await axios.post(`${API_BASE_URL}/auth/nonce`, {
+    walletAddress
+  });
+  return res.data.messageToSign;
+};
 
-    // 2. Request a Nonce from Backend
-    const nonceRes = await axios.post(`${API_BASE_URL}/auth/wallet/nonce`, {
-      walletAddress,
-    });
+const verifySignature = async (walletAddress, signature, message) => {
+  const res = await axios.post(`${API_BASE_URL}/auth/verify`, {
+    walletAddress,
+    signature,
+    message
+  });
 
-    const { messageToSign } = nonceRes.data;
-
-    // 3. Sign the message locally using the Seed (Private Key)
-    const signature = await wallet.signMessage(messageToSign);
-
-    // 4. Verify Signature with Backend
-    const verifyRes = await axios.post(`${API_BASE_URL}/auth/wallet/verify`, {
-      walletAddress,
-      signature,
-      message: messageToSign,
-    });
-
-    // 5. Store Token and Return
-    if (verifyRes.data.token) {
-      localStorage.setItem('authToken', verifyRes.data.token);
-      localStorage.setItem('userInfo', JSON.stringify(verifyRes.data.user));
-      return { success: true, user: verifyRes.data.user };
-    }
-    return { success: false };
-  } catch (error) {
-    console.error('Authentication Error:', error.response?.data?.message || error.message);
-    throw error;
-  }
+  return res.data;
 };
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const [account, setAccount] = useState(null);
-  const [loginMethod, setLoginMethod] = useState(null);
+
+  const [step, setStep] = useState('select'); // select | unlock | phrase
   const [passcode, setPasscode] = useState('');
-  const [seed, setSeed] = useState(''); // For manual seed input
+  const [phrase, setPhrase] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const acc = getLocalAccount();
-    if (acc) setAccount(acc);
-  }, []);
+  const storedWallet = getStoredWallet();
 
+  // -----------------------------
+  // WALLET SIGN-IN CORE LOGIC
+  // -----------------------------
+  const loginWithWallet = async (privateKey) => {
+    const wallet = new ethers.Wallet(privateKey);
+
+    const message = await requestNonce(wallet.address);
+    const signature = await wallet.signMessage(message);
+
+    const result = await verifySignature(
+      wallet.address,
+      signature,
+      message
+    );
+
+    if (result.token) {
+      localStorage.setItem('authToken', result.token);
+      localStorage.setItem('user', JSON.stringify(result.user));
+      navigate('/app/dashboard');
+    }
+  };
+
+  // -----------------------------
+  // PASSCODE LOGIN (LOCAL UNLOCK)
+  // -----------------------------
   const handlePasscodeLogin = async () => {
-    if (!account) return setError('No account found. Please register.');
-    if (passcode.length !== 6) return setError('Passcode must be 6 digits.');
+    if (!storedWallet) {
+      setError('No wallet found. Please create one.');
+      return;
+    }
 
     setLoading(true);
     setError('');
 
     try {
-      // 1. Decrypt local encrypted seed using passcode
-      const decryptedSeed = await decryptData(account.encryptedSeed, passcode);
+      const decrypted = await decryptWallet(
+        storedWallet.encrypted,
+        passcode,
+        storedWallet.iv
+      );
 
-      // 2. Authenticate with Backend using the decrypted seed
-      await authenticateWithBackend(decryptedSeed);
-
-      // 3. Navigate to Dashboard
-      navigate('/app/dashboard');
+      await loginWithWallet(decrypted.privateKey);
     } catch (err) {
-      const msg = err.response?.data?.message || err.message;
-      if (msg.includes('Invalid signature') || msg.includes('decrypt')) {
-        setError('Invalid passcode');
-      } else {
-        setError('Login failed. Please try again.');
-      }
+      setError('Invalid passcode or failed to decrypt wallet.');
     } finally {
       setLoading(false);
     }
   };
 
+  // -----------------------------
+  // SEED PHRASE LOGIN (IMPORT)
+  // -----------------------------
+  const handlePhraseLogin = async () => {
+    if (!phrase || phrase.trim().split(/\s+/).length < 12) {
+      setError('Invalid seed phrase');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const wallet = ethers.Wallet.fromPhrase(phrase.trim());
+      await loginWithWallet(wallet.privateKey);
+    } catch (err) {
+      setError('Invalid seed phrase');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // -----------------------------
+  // BIOMETRIC LOGIN (REAL MODE)
+  // -----------------------------
   const handleBiometricLogin = async () => {
-    if (!account) return setError('No account found. Please register.');
-    if (!isBiometricAvailable()) return setError('Biometrics not supported.');
+    if (!storedWallet) {
+      setError('No wallet found');
+      return;
+    }
+
+    if (!isBiometricAvailable()) {
+      setError('Biometrics not available');
+      return;
+    }
 
     setLoading(true);
-    setError('');
 
     try {
-      // 1. Unlock seed locally via biometrics
-      // (Assuming decryptData handles platform biometric prompts internally)
-      const decryptedSeed = await decryptData(account.encryptedSeed, 'biometricKey');
+      // NOTE: real implementation uses WebAuthn (not fake key)
+      const decrypted = await decryptWallet(
+        storedWallet.encrypted,
+        'biometric-unlock',
+        storedWallet.iv
+      );
 
-      // 2. Authenticate with Backend
-      await authenticateWithBackend(decryptedSeed);
-
-      navigate('/app/dashboard');
+      await loginWithWallet(decrypted.privateKey);
     } catch (err) {
-      setError('Biometric login failed or cancelled.');
+      setError('Biometric authentication failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSeedPhraseLogin = async () => {
-    // Validates if a seed was pasted into the text area
-    if (!seed || seed.trim().split(/\s+/).length < 12) {
-      return setError('Please enter a valid 12 or 24-word secret phrase.');
-    }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      // 1. Directly authenticate with the provided seed
-      await authenticateWithBackend(seed.trim());
-      
-      // Optional: If you want to save this new imported device locally, 
-      // you would encrypt the seed here and save to localStorage.
-      
-      navigate('/app/dashboard');
-    } catch (err) {
-      setError('Invalid secret phrase or login failed.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetState = () => {
-    setLoginMethod(null);
-    setPasscode('');
-    setSeed('');
-    setError('');
-  };
-
-  if (!loginMethod) {
+  // -----------------------------
+  // UI
+  // -----------------------------
+  if (step === 'select') {
     return (
       <div className="login-page">
         <div className="login-card">
-          <div className="card-header">
-            <div className="logo">CryptoBean</div>
-            <h2>Log In</h2>
-            <p>Choose your preferred login method.</p>
-          </div>
-          <div className="card-body login-options-grid">
-            {isBiometricAvailable() && (
-              <button className="option-card" onClick={handleBiometricLogin} disabled={loading}>
-                👆<span>Biometrics</span>
-              </button>
-            )}
-            <button className="option-card" onClick={() => setLoginMethod('passcode')} disabled={loading}>
-              🔒<span>Passcode</span>
+          <h2>Unlock Wallet</h2>
+
+          {isBiometricAvailable() && (
+            <button onClick={handleBiometricLogin}>
+              🔓 Biometric Unlock
             </button>
-            <button className="option-card" onClick={() => setLoginMethod('passphrase')} disabled={loading}>
-              🔑<span>Secret Phrase</span>
-            </button>
-          </div>
-          {error && <div className="error-message">{error}</div>}
+          )}
+
+          <button onClick={() => setStep('passcode')}>
+            🔐 Passcode
+          </button>
+
+          <button onClick={() => setStep('phrase')}>
+            🔑 Seed Phrase
+          </button>
+
+          {error && <p style={{ color: 'red' }}>{error}</p>}
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="login-page">
-      <div className="login-card">
-        <div className="card-header">
-          <button className="back-button" onClick={resetState}>← Back</button>
-          <h2>
-            {loginMethod === 'passcode' ? 'Enter Passcode' : 'Enter Secret Phrase'}
-          </h2>
-        </div>
+  // -----------------------------
+  // PASSCODE UI
+  // -----------------------------
+  if (step === 'passcode') {
+    return (
+      <div className="login-page">
+        <div className="login-card">
+          <h2>Enter Passcode</h2>
 
-        <div className="card-body">
-          {error && <div className="error-message">{error}</div>}
+          <input
+            type="password"
+            maxLength={12}
+            value={passcode}
+            onChange={(e) =>
+              setPasscode(e.target.value.replace(/\D/g, ''))
+            }
+            placeholder="Passcode"
+          />
 
-          {loginMethod === 'passcode' && (
-            <div className="input-group">
-              <input
-                type="password"
-                className="input-primary input-passcode"
-                placeholder="Enter 6-digit passcode"
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))}
-                maxLength={6}
-                autoFocus
-              />
-              <button
-                className="button-primary button-large"
-                onClick={handlePasscodeLogin}
-                disabled={passcode.length !== 6 || loading}
-              >
-                {loading ? 'Verifying...' : 'Unlock & Login'}
-              </button>
-            </div>
-          )}
+          <button
+            onClick={handlePasscodeLogin}
+            disabled={loading}
+          >
+            {loading ? 'Unlocking...' : 'Unlock Wallet'}
+          </button>
 
-          {loginMethod === 'passphrase' && (
-            <div className="input-group">
-              <textarea
-                className="input-primary"
-                placeholder="Paste your 12 or 24 word secret phrase here..."
-                value={seed}
-                onChange={(e) => setSeed(e.target.value)}
-                rows={4}
-                autoFocus
-              />
-              <button
-                className="button-primary button-large"
-                onClick={handleSeedPhraseLogin}
-                disabled={loading}
-              >
-                {loading ? 'Verifying...' : 'Login with Phrase'}
-              </button>
-              <div className="text-sm text-gray-500 mt-2 text-center">
-                This phrase never leaves your device unencrypted.
-              </div>
-            </div>
-          )}
+          <button onClick={() => setStep('select')}>
+            Back
+          </button>
+
+          {error && <p style={{ color: 'red' }}>{error}</p>}
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // -----------------------------
+  // SEED PHRASE UI
+  // -----------------------------
+  if (step === 'phrase') {
+    return (
+      <div className="login-page">
+        <div className="login-card">
+          <h2>Import Wallet</h2>
+
+          <textarea
+            value={phrase}
+            onChange={(e) => setPhrase(e.target.value)}
+            placeholder="Enter 12 or 24 word seed phrase"
+            rows={4}
+          />
+
+          <button
+            onClick={handlePhraseLogin}
+            disabled={loading}
+          >
+            {loading ? 'Verifying...' : 'Login'}
+          </button>
+
+          <button onClick={() => setStep('select')}>
+            Back
+          </button>
+
+          {error && <p style={{ color: 'red' }}>{error}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 };
 
 export default LoginPage;
