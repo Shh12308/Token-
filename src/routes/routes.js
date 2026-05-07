@@ -35,7 +35,6 @@ const AppRoutes = () => {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/security" element={<Security />} />
         <Route path="/profile" element={<Profile />} />
-
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
       </Routes>
