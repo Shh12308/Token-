@@ -80,72 +80,61 @@ const RegisterPage = () => {
     setError('');
 
 try {
-    const phraseString = seedPhrase.join(' ');
+  const phraseString = seedPhrase.join(' ');
 
-    // FIX: Handle Ethers v5 vs v6
-    let wallet;
-    if (ethers.Wallet.fromPhrase) {
-      // Ethers v6
-      wallet = ethers.Wallet.fromPhrase(phraseString);
-    } else {
-      // Ethers v5
-      wallet = ethers.Wallet.fromMnemonic(phraseString);
-    }
+  // Create wallet (ethers v5 / v6 safe)
+  let wallet;
+  if (ethers.Wallet.fromPhrase) {
+    wallet = ethers.Wallet.fromPhrase(phraseString);
+  } else {
+    wallet = ethers.Wallet.fromMnemonic(phraseString);
+  }
 
-    // Derive encryption key from passcode
-    const key = await deriveKeyFromPasscode(passcode);
+  // Derive encryption key from passcode
+  const key = await deriveKeyFromPasscode(passcode);
 
-    // encrypt seed locally
-    const encryptedSeed = await encryptData(phraseString, key);
+  // Encrypt seed locally
+  const encryptedSeed = await encryptData(phraseString, key);
 
+  // ==========================================
+  // BACKEND INTEGRATION
+  // ==========================================
 
-      // 3. Create Wallet object (NON-CUSTODIAL)
-      const wallet = ethers.Wallet.fromPhrase(phraseString);
+  const nonceRes = await axios.post(`${BACKEND_URL}/auth/wallet/nonce`, {
+    walletAddress: wallet.address
+  });
 
-      // ==========================================
-      // BACKEND INTEGRATION
-      // ==========================================
-      
-      // Step A: Get Nonce from Backend
-      const nonceRes = await axios.post(`${BACKEND_URL}/auth/wallet/nonce`, {
-        walletAddress: wallet.address
-      });
+  const { messageToSign } = nonceRes.data;
 
-      const { messageToSign } = nonceRes.data;
+  const signature = await wallet.signMessage(messageToSign);
 
-      // Step B: Sign the message using the Wallet (Frontend)
-      const signature = await wallet.signMessage(messageToSign);
+  const verifyRes = await axios.post(`${BACKEND_URL}/auth/wallet/verify`, {
+    walletAddress: wallet.address,
+    signature,
+    message: messageToSign,
+    walletType: 'created'
+  });
 
-      // Step C: Verify Signature with Backend (This logs you in or registers you)
-      const verifyRes = await axios.post(`${BACKEND_URL}/auth/wallet/verify`, {
-        walletAddress: wallet.address,
-        signature,
-        message: messageToSign,
-        walletType: 'created'
-      });
+  const { token, user } = verifyRes.data;
+  localStorage.setItem('authToken', token);
 
-      // 4. Store Auth Token
-      const { token, user } = verifyRes.data;
-      localStorage.setItem('authToken', token);
+  localStorage.setItem('wallet_data', JSON.stringify({
+    email,
+    address: wallet.address,
+    encryptedSeed,
+    iv: encryptedSeed.iv
+  }));
 
-      // 5. Store Encrypted Wallet Data Locally
-      localStorage.setItem('wallet_data', JSON.stringify({
-        email, // We save email locally for UI purposes only
-        address: wallet.address,
-        encryptedSeed,
-        iv: encryptedSeed.iv // Ensure IV is saved
-      }));
+  localStorage.setItem('onboarded', 'true');
 
-      localStorage.setItem('onboarded', 'true');
+  navigate('/');
 
-      navigate('/'); // Redirect to Home
-
-    } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+} catch (err) {
+  console.error(err);
+  setError(err.response?.data?.message || 'Registration failed. Please try again.');
+} finally {
+  setLoading(false);
+}
   };
 
   return (
