@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 
 // Pages
@@ -14,15 +14,19 @@ import Security from './pages/Security'
 import Browser from './pages/Browser'
 import Profile from './pages/Profile'
 
-// Auth pages (optional, still accessible)
+// Auth pages
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 
-const App = () => {
+// We separate the inner content to access useLocation (which requires the Router context)
+const AnimatedRoutes = () => {
+  const location = useLocation()
+
   return (
     <AnimatePresence mode="wait">
-      <Routes>
-
+      {/* Passing location and key ensures AnimatePresence triggers animations on route change */}
+      <Routes location={location} key={location.pathname}>
+        
         <Route path="/" element={<Home />} />
         
         <Route path="/home" element={<Home />} />
@@ -41,6 +45,15 @@ const App = () => {
 
       </Routes>
     </AnimatePresence>
+  )
+}
+
+const App = () => {
+  return (
+    // The Router provides the context for useNavigate, useLocation, and Routes to work
+    <Router>
+      <AnimatedRoutes />
+    </Router>
   )
 }
 
