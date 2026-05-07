@@ -1,128 +1,64 @@
 // src/utils/crypto.js
-import localforage from 'localforage';
 
-// --- Base64 helpers ---
-const arrayBufferToBase64 = (buffer) => {
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-};
-
-const base64ToArrayBuffer = (base64) => {
-  const binary = atob(base64);
-  const buffer = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    buffer[i] = binary.charCodeAt(i);
-  }
-  return buffer;
-};
-
-// --- Salt generation ---
-export const generateSalt = () => {
-  const array = new Uint8Array(16);
-  window.crypto.getRandomValues(array);
-  return arrayBufferToBase64(array);
-};
-
-// --- Key derivation (matches your import name) ---
-export const deriveKeyFromPasscode = async (password, salt) => {
+// Derives a cryptographic key from the user's passcode using PBKDF2
+export const deriveKeyFromPasscode = async (passcode, salt) => {
   const enc = new TextEncoder();
-
   const keyMaterial = await window.crypto.subtle.importKey(
-    'raw',
-    enc.encode(password),
-    { name: 'PBKDF2' },
+    "raw",
+    enc.encode(passcode),
+    { name: "PBKDF2" },
     false,
-    ['deriveKey']
+    ["deriveKey"]
   );
+  
+  // In production, always use a unique random salt per user stored with the IV
+  const saltBuffer = salt ? enc.encode(salt) : window.crypto.getRandomValues(new Uint8Array(16));
 
   return window.crypto.subtle.deriveKey(
     {
-      name: 'PBKDF2',
-      salt: base64ToArrayBuffer(salt),
-      iterations: 100000,
-      hash: 'SHA-256',
+      name: "PBKDF2",
+      salt: saltBuffer,
+      iterations: 100000, // High iteration count for security
+      hash: "SHA-256"
     },
     keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"]
   );
 };
 
-// --- Encrypt data ---
-export const encryptData = async (data, password) => {
-  const salt = generateSalt();
-  const key = await deriveKeyFromPasscode(password, salt);
-
-  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+// Encrypts data (Seed Phrase) using AES-GCM
+export const encryptData = async (data, key) => {
   const enc = new TextEncoder();
-
+  const iv = window.crypto.getRandomValues(new Uint8Array(12)); // Random IV
   const encrypted = await window.crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
+    { name: "AES-GCM", iv: iv },
     key,
-    enc.encode(JSON.stringify(data))
+    enc.encode(data)
   );
 
+  // Return buffers as strings/Base64 for storage
   return {
-    encryptedData: arrayBufferToBase64(encrypted),
-    iv: arrayBufferToBase64(iv),
-    salt,
+    iv: Array.from(iv).map(b => String.fromCharCode(b)).join(''),
+    data: Array.from(new Uint8Array(encrypted)).map(b => String.fromCharCode(b)).join('')
   };
 };
 
-// --- Decrypt data ---
-export const decryptData = async (encryptedData, password, iv, salt) => {
+// Decrypts data
+export const decryptData = async (encryptedData, key, ivString) => {
+  const dec = new TextDecoder();
+  const iv = new Uint8Array(ivString.split('').map(c => c.charCodeAt(0)));
+  const data = new Uint8Array(encryptedData.split('').map(c => c.charCodeAt(0)));
+
   try {
-    const key = await deriveKeyFromPasscode(password, salt);
-    const dec = new TextDecoder();
-
     const decrypted = await window.crypto.subtle.decrypt(
-      {
-        name: 'AES-GCM',
-        iv: base64ToArrayBuffer(iv),
-      },
+      { name: "AES-GCM", iv: iv },
       key,
-      base64ToArrayBuffer(encryptedData)
+      data
     );
-
-    return JSON.parse(dec.decode(decrypted));
-  } catch (err) {
-    throw new Error('Decryption failed. Wrong password or corrupted data.');
+    return dec.decode(decrypted);
+  } catch (e) {
+    throw new Error("Decryption failed. Invalid passcode.");
   }
-};
-
-// --- Hash (for PIN verification) ---
-export const hashPassword = async (password) => {
-  const enc = new TextEncoder();
-  const hashBuffer = await window.crypto.subtle.digest(
-    'SHA-256',
-    enc.encode(password)
-  );
-
-  return arrayBufferToBase64(hashBuffer);
-};
-
-// --- LocalForage storage helpers ---
-const walletStore = localforage.createInstance({
-  name: 'CryptoBeanWallet',
-  storeName: 'wallet_data',
-});
-
-// Save encrypted wallet
-export const saveWallet = async (encryptedWallet) => {
-  await walletStore.setItem('wallet', encryptedWallet);
-};
-
-// Retrieve encrypted wallet
-export const getWallet = async () => {
-  return await walletStore.getItem('wallet');
-};
-
-// Clear wallet (logout / lock)
-export const clearWallet = async () => {
-  await walletStore.removeItem('wallet');
 };
