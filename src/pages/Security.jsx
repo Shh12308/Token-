@@ -8,21 +8,45 @@ const Security = () => {
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [message, setMessage] = useState('');
-  const [showMnemonic, setShowMnemonic] = useState(false);
+  const [mnemonic, setMnemonic] = useState('');
 
-  const { lockWallet, unlockWallet, verifyPin, changePin, getMnemonic } =
-    useContext(Web3Context);
-
+  const context = useContext(Web3Context);
   const navigate = useNavigate();
 
+  // 🛑 Prevent crash if context is broken
+  if (!context) {
+    return <p>Web3 context not available</p>;
+  }
+
+  const {
+    lockWallet,
+    unlockWallet,
+    verifyPin,
+    changePin,
+    getMnemonic,
+  } = context;
+
+  // 🔐 CHANGE PIN
   const handleChangePin = async () => {
+    setMessage('');
+
     if (!pin) {
       setMessage('Enter current PIN');
       return;
     }
 
+    if (!newPin || !confirmPin) {
+      setMessage('Enter new PIN');
+      return;
+    }
+
     if (newPin !== confirmPin) {
       setMessage('New PIN does not match');
+      return;
+    }
+
+    if (!verifyPin || !changePin) {
+      setMessage('Security service unavailable');
       return;
     }
 
@@ -36,22 +60,39 @@ const Security = () => {
 
       await changePin(newPin);
       setMessage('PIN updated successfully');
+
+      setPin('');
+      setNewPin('');
+      setConfirmPin('');
     } catch (err) {
       console.error(err);
       setMessage('Error updating PIN');
     }
   };
 
+  // 🧾 BACKUP
   const handleBackup = async () => {
-    try {
-      const mnemonic = await getMnemonic(pin);
+    setMessage('');
 
-      if (!mnemonic) {
-        setMessage('Enter PIN to view backup');
+    if (!pin) {
+      setMessage('Enter PIN to view backup');
+      return;
+    }
+
+    if (!getMnemonic) {
+      setMessage('Backup service unavailable');
+      return;
+    }
+
+    try {
+      const phrase = await getMnemonic(pin);
+
+      if (!phrase) {
+        setMessage('Incorrect PIN or no wallet found');
         return;
       }
 
-      setShowMnemonic(mnemonic);
+      setMnemonic(phrase);
     } catch (err) {
       console.error(err);
       setMessage('Failed to retrieve mnemonic');
@@ -87,7 +128,9 @@ const Security = () => {
           onChange={(e) => setConfirmPin(e.target.value)}
         />
 
-        <button onClick={handleChangePin}>Update PIN</button>
+        <button onClick={handleChangePin}>
+          Update PIN
+        </button>
 
         {message && <p>{message}</p>}
       </section>
@@ -100,10 +143,10 @@ const Security = () => {
           Show Backup Phrase
         </button>
 
-        {showMnemonic && (
+        {mnemonic && (
           <div className="mnemonic-box">
             <p><strong>⚠️ Never share this phrase</strong></p>
-            <p>{showMnemonic}</p>
+            <p>{mnemonic}</p>
           </div>
         )}
       </section>
@@ -114,6 +157,11 @@ const Security = () => {
 
         <button
           onClick={() => {
+            if (!lockWallet) {
+              setMessage('Lock service unavailable');
+              return;
+            }
+
             lockWallet();
             navigate('/lock');
           }}
