@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ethers } from 'ethers';
 import { decryptWallet } from '../../wallet/decryptWallet';
 import { isBiometricAvailable } from '../../utils/device';
 
+// 1. Use Fallback if Env Var is missing for Local Dev
+// BUT in Production (Vercel), this MUST be set in Env Vars
 const API_BASE_URL =
-  process.env.REACT_APP_API_URL ||
-  'https://blockvault-backend-production.up.railway.app/api';
+  process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 const STORAGE_KEY = 'wallet_encrypted';
 
@@ -16,21 +17,33 @@ const getStoredWallet = () => {
   return data ? JSON.parse(data) : null;
 };
 
+// Debug: Log to confirm URL
 const requestNonce = async (walletAddress) => {
-  const res = await axios.post(`${API_BASE_URL}/auth/nonce`, {
-    walletAddress
-  });
-  return res.data.messageToSign;
+  console.log("Fetching Nonce from:", `${API_BASE_URL}/auth/wallet/nonce`);
+  try {
+    const res = await axios.post(`${API_BASE_URL}/auth/wallet/nonce`, {
+      walletAddress
+    });
+    return res.data.messageToSign;
+  } catch (error) {
+    console.error("Nonce Error:", error);
+    throw error;
+  }
 };
 
 const verifySignature = async (walletAddress, signature, message) => {
-  const res = await axios.post(`${API_BASE_URL}/auth/verify`, {
-    walletAddress,
-    signature,
-    message
-  });
-
-  return res.data;
+  console.log("Verifying at:", `${API_BASE_URL}/auth/wallet/verify`);
+  try {
+    const res = await axios.post(`${API_BASE_URL}/auth/wallet/verify`, {
+      walletAddress,
+      signature,
+      message
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Verify Error:", error);
+    throw error;
+  }
 };
 
 const LoginPage = () => {
@@ -48,21 +61,31 @@ const LoginPage = () => {
   // WALLET SIGN-IN CORE LOGIC
   // -----------------------------
   const loginWithWallet = async (privateKey) => {
-    const wallet = new ethers.Wallet(privateKey);
+    try {
+      const wallet = new ethers.Wallet(privateKey);
+      const message = await requestNonce(wallet.address);
+      const signature = await wallet.signMessage(message);
+      const result = await verifySignature(
+        wallet.address,
+        signature,
+        message
+      );
 
-    const message = await requestNonce(wallet.address);
-    const signature = await wallet.signMessage(message);
-
-    const result = await verifySignature(
-      wallet.address,
-      signature,
-      message
-    );
-
-    if (result.token) {
-      localStorage.setItem('authToken', result.token);
-      localStorage.setItem('user', JSON.stringify(result.user));
-      navigate('/app/dashboard');
+      if (result.token) {
+        localStorage.setItem('authToken', result.token);
+        localStorage.setItem('user', JSON.stringify(result.user));
+        // Ensure this path matches your App.js
+        navigate('/app/dashboard'); 
+      } else {
+        throw new Error("No token returned from backend");
+      }
+    } catch (err) {
+      console.error("Login Failed:", err);
+      if (err.code === 'ERR_NETWORK') {
+        setError("Cannot connect to Backend. Check API URL in Settings.");
+      } else {
+        setError("Login failed. Please try again.");
+      }
     }
   };
 
@@ -84,7 +107,6 @@ const LoginPage = () => {
         passcode,
         storedWallet.iv
       );
-
       await loginWithWallet(decrypted.privateKey);
     } catch (err) {
       setError('Invalid passcode or failed to decrypt wallet.');
@@ -110,13 +132,12 @@ const LoginPage = () => {
       await loginWithWallet(wallet.privateKey);
     } catch (err) {
       setError('Invalid seed phrase');
-    } finally {
       setLoading(false);
     }
   };
 
   // -----------------------------
-  // BIOMETRIC LOGIN (REAL MODE)
+  // BIOMETRIC LOGIN
   // -----------------------------
   const handleBiometricLogin = async () => {
     if (!storedWallet) {
@@ -132,17 +153,14 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      // NOTE: real implementation uses WebAuthn (not fake key)
       const decrypted = await decryptWallet(
         storedWallet.encrypted,
         'biometric-unlock',
         storedWallet.iv
       );
-
       await loginWithWallet(decrypted.privateKey);
     } catch (err) {
       setError('Biometric authentication failed');
-    } finally {
       setLoading(false);
     }
   };
@@ -189,8 +207,9 @@ const LoginPage = () => {
             type="password"
             maxLength={12}
             value={passcode}
-            onChange={(e) =>
-              setPasscode(e.target.value.replace(/\D/g, ''))
+            onChange={(e) => 
+              // FIX: Changed /\D/g to /\s/g to remove spaces, keep digits
+              setPasscode(e.target.value.replace(/\s/g, ''))
             }
             placeholder="Passcode"
           />
@@ -226,6 +245,7 @@ const LoginPage = () => {
             onChange={(e) => setPhrase(e.target.value)}
             placeholder="Enter 12 or 24 word seed phrase"
             rows={4}
+            style={{width: '100%'}}
           />
 
           <button
