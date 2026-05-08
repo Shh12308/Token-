@@ -1,25 +1,24 @@
-// src/pages/Search.jsx
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSearch, FiTrendingUp, FiClock, FiExternalLink, FiX, FiFilter, FiLock, FiUnlock, FiRefreshCw } from 'react-icons/fi';
-import { useNavigate } from 'react-router-dom';
 
 const BACKEND_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
 const Search = () => {
-  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [results, setResults] = useState([]);
   const [searchHistory, setSearchHistory] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
+  
   const [filters, setFilters] = useState({
     type: 'all',
     chain: 'all',
     time: 'all'
   });
 
+  // Load history on mount
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('searchHistory') || '[]');
@@ -34,6 +33,7 @@ const Search = () => {
     if (!query.trim()) {
       return;
     }
+
     setLoading(true);
     setError('');
     setResults([]); // Clear previous results immediately
@@ -44,30 +44,27 @@ const Search = () => {
       setSearchHistory(newHistory);
       localStorage.setItem('searchHistory', JSON.stringify(newHistory));
 
-      // Simulate Search (Using CoinGecko for demo reliability)
-      const response = await fetch('https://api.coingecko.com/api/v3/search?query=' + query);
+      // Simulate search with CoinGecko
+      const response = await fetch(`https://api.coingecko.com/api/v3/search?query=${query}`);
       const data = await response.json();
 
-      if (data.coins && data.coins.length > 0) {
-        const formattedResults = data.coins.map((coin) => {
-          return {
-            id: coin.id,
-            title: coin.name,
-            symbol: coin.symbol.toUpperCase(),
-            url: 'https://www.coingecko.com/en/coins/' + coin.id,
-            description: 'Market cap: $' + (coin.market_cap_rank ? coin.market_cap_rank.toLocaleString() : 'N/A') + '. Price: $' + (coin.current_price ? coin.current_price.toFixed(2) : 'N/A'),
-            type: 'market',
-            timestamp: new Date().toISOString()
-          };
-        });
-        setResults(formattedResults);
-      } else {
-        setError('No results found.');
-      }
+      const formattedResults = data.coins.map((coin) => {
+        return {
+          id: coin.id,
+          title: coin.name,
+          symbol: coin.symbol.toUpperCase(),
+          url: `https://www.coingecko.com/en/coins/${coin.id}`,
+          description: `Price: ${coin.current_price ? coin.current_price.toFixed(2) : 'N/A'}. Market Cap: ${coin.market_cap_rank ? coin.market_cap_rank.toLocaleString() : 'N/A'}.`,
+          type: 'market',
+          timestamp: new Date().toISOString()
+        };
+      });
+
+      setResults(formattedResults);
     } catch (err) {
       console.error("Search Error:", err);
-      setError('Failed to fetch search results. Please check connection.');
-      setResults([]); // Ensure results are cleared on error
+      setError("Failed to fetch search results. Please try again.");
+      setResults([]); // Ensure empty results on error
     } finally {
       setLoading(false);
     }
@@ -125,7 +122,7 @@ const Search = () => {
           <button 
             onClick={handleSearch}
             className="search-submit"
-            disabled={!query.trim() || loading}
+            disabled={loading || !query.trim()}
           >
             {loading ? <FiRefreshCw className="spin" /> : <FiTrendingUp />}
           </button>
@@ -141,13 +138,13 @@ const Search = () => {
               className="filters-panel"
             >
               <div className="filter-group">
-                <label>Content Type</label>
+                <label>Category</label>
                 <select 
                   value={filters.type}
-                  onChange={(e) => setFilters({...filters, type: e.target.value})}
+                  onChange={(e) => setFilters({ ...filters, type: e.target.value })}
                   className="filter-select"
                 >
-                  <option value="all">All Content</option>
+                  <option value="all">All Assets</option>
                   <option value="web">Web Pages</option>
                   <option value="dapp">DApps</option>
                   <option value="nft">NFTs</option>
@@ -155,22 +152,26 @@ const Search = () => {
                   <option value="news">News</option>
                 </select>
               </div>
-
+              
               <div className="filter-group">
-                <label>Time Range</label>
+                <label>Network</label>
                 <select 
-                  value={filters.time}
-                  onChange={(e) => setFilters({...filters, time: e.target.value})}
+                  value={filters.chain}
+                  onChange={(e) => setFilters({ ...filters, chain: e.target.value })}
                   className="filter-select"
                 >
-                  <option value="all">Any Time</option>
-                  <option value="day">Past 24 Hours</option>
-                  <option value="week">Past Week</option>
-                  <option value="month">Past Month</option>
-                  <option value="year">Past Year</option>
+                  <option value="all">All Chains</option>
+                  <option value="ethereum">Ethereum</option>
+                  <option value="polygon">Polygon</option>
+                  <option value="bsc">BSC</option>
+                  <option value="arbitrum">Arbitrum</option>
+                  <option value="optimism">Optimism</option>
+                  <option value="avalanche">Avalanche</option>
+                  <option value="fantom">Fantom</option>
+                  <option value="base">Base</option>
                 </select>
               </div>
-              
+
               <button 
                 onClick={() => setShowFilters(false)}
                 className="apply-btn"
@@ -181,7 +182,7 @@ const Search = () => {
           )}
         </AnimatePresence>
 
-        {/* Search Results */}
+        {/* Error Message */}
         {error && (
           <div className="error-message">
             <FiLock />
@@ -189,28 +190,35 @@ const Search = () => {
           </div>
         )}
 
+        {/* Search Results */}
         <AnimatePresence mode="wait">
-          {results.length > 0 && !loading && (
-            <div className="results-list">
+          {results.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="results-list"
+            >
               <div className="results-header">
                 <h3>Results ({results.length})</h3>
+                <span className="search-info">
+                  {filters.type !== 'all' ? filters.type : 'Global'} • {filters.chain !== 'all' ? filters.chain : 'All Networks'}
+                </span>
               </div>
+              
               {results.map((result, index) => (
                 <motion.a
                   key={result.id}
                   href={result.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
                   className="result-item"
                 >
                   <div className="result-header">
                     <h4 className="result-title">
-                      <a href={result.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>
-                        {result.title}
-                      </a>
+                      {result.title}
                     </h4>
                     <span className="result-type">{result.type}</span>
                   </div>
@@ -225,12 +233,13 @@ const Search = () => {
                   <div className="result-footer">
                     <span className="result-time">
                       <FiClock size={12} />
-                      {new Date(result.timestamp).toLocaleString()}
+                      {new Date(result.timestamp).toLocaleDateString()}
                     </span>
+                    <button className="save-btn">Save</button>
                   </div>
                 </motion.a>
               ))}
-            </div>
+            </motion.div>
           )}
         </AnimatePresence>
       </motion.div>
