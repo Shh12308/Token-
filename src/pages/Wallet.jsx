@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
-import { Box, Typography, Paper } from '@mui/material';
-
-import QuickActionsView from '../components/wallet/QuickActionsView';
-import ReceiveView from '../components/wallet/ReceiveView';
-import SendView from '../components/wallet/SendView';
-import SwapView from '../components/wallet/SwapView';
+import { useGetBalancesQuery } from '../store/services/walletApi';
 
 const Wallet = () => {
   const [view, setView] = useState('quick');
+
+  const { data, isLoading, error } = useGetBalancesQuery();
+
+  const balances = data || {};
 
   const renderView = () => {
     switch (view) {
@@ -24,9 +22,20 @@ const Wallet = () => {
 
   return (
     <Box sx={{ width: '100%', maxWidth: 800, mx: 'auto', mt: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        CryptoBean Wallet
-      </Typography>
+      <Typography variant="h4">CryptoBean Wallet</Typography>
+
+      {/* BALANCE DISPLAY */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        {isLoading && <p>Loading balances...</p>}
+        {error && <p style={{ color: 'red' }}>Failed to load balances</p>}
+
+        {!isLoading && !error && (
+          <div>
+            <p>ETH: {balances.eth || 0}</p>
+            <p>USDC: {balances.usdc || 0}</p>
+          </div>
+        )}
+      </Paper>
 
       <Paper elevation={3} sx={{ p: 2 }}>
         {renderView()}
@@ -34,5 +43,3 @@ const Wallet = () => {
     </Box>
   );
 };
-
-export default Wallet;
