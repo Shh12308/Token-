@@ -27,7 +27,7 @@ export const Web3Provider = ({ children }) => {
       const acc = getLocalAccount();
       if (acc) setAccount(acc);
 
-      const infuraKey = import.meta.env.VITE_INFURA_KEY;
+      const infuraKey = import.meta.env.VITE_INFURA_KEY || 'PzU4nVhvyzx58iqlooU4p';
 
       if (!infuraKey) {
         console.warn("⚠️ Missing VITE_INFURA_KEY");
