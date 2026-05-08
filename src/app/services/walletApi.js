@@ -1,41 +1,44 @@
 // src/app/services/walletApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
+const BASE_URL = 'https://YOUR-BACKEND-DOMAIN.com/api';
+
 export const walletApi = createApi({
   reducerPath: 'walletApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'https://your-backend-url.com/api',
+    baseUrl: BASE_URL,
   }),
 
   endpoints: (builder) => ({
-    // 💱 Swap tokens
-    swapToken: builder.mutation({
-      query: ({ fromToken, toToken, amount }) => ({
-        url: '/swap',
-        method: 'POST',
-        body: { fromToken, toToken, amount },
-      }),
-    }),
-
-    // 💰 Get balances
     getBalances: builder.query({
       query: () => '/balances',
     }),
 
-    // 💳 BUY CRYPTO (NEW)
+    getUser: builder.query({
+      query: () => '/user',
+    }),
+
     createBuySession: builder.mutation({
-      query: ({ amount, currency, walletAddress }) => ({
+      query: (body) => ({
         url: '/buy',
         method: 'POST',
-        body: { amount, currency, walletAddress },
+        body,
+      }),
+    }),
+
+    swapToken: builder.mutation({
+      query: (body) => ({
+        url: '/swap',
+        method: 'POST',
+        body,
       }),
     }),
   }),
 });
 
-// Export hooks
 export const {
-  useSwapTokenMutation,
   useGetBalancesQuery,
+  useGetUserQuery,
   useCreateBuySessionMutation,
+  useSwapTokenMutation,
 } = walletApi;
