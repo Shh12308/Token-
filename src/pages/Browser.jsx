@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Web3Context } from '../context/Web3Context';
 import { ThemeContext } from '../context/ThemeContext';
 import { NotificationContext } from '../context/NotificationContext';
-import './Browser.css';
+
 
 const Browser = () => {
   const [url, setUrl] = useState('https://opensea.io');
