@@ -1,17 +1,20 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 const NotFound = () => {
   return (
-    <div style={{ textAlign: 'center', padding: '60px' }}>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      style={{ textAlign: 'center', padding: '60px' }}
+    >
       <h1>404</h1>
       <h2>Page Not Found</h2>
-      <p>The page you are looking for does not exist.</p>
 
-      <Link to="/" style={{ color: 'blue' }}>
-        Go back home
-      </Link>
-    </div>
+      <Link to="/">Go Home</Link>
+    </motion.div>
   );
 };
 
