@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ethers } from 'ethers';
 
-// Import the consolidated utils file
+// Import consolidated utils
 import { 
   generateSeedPhrase, 
   copyToClipboard, 
@@ -11,11 +11,11 @@ import {
   encryptData 
 } from '../../utils/wallet';
 
-// FIX 1: Corrected URL protocol (removed double slashes)
+// Fix URL
 const BACKEND_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
 const ProgressBar = ({ step }) => (
-  // FIX 2: Added missing quotes around className
+  // FIX: Added missing quotes
   <div className="progress-bar">
     <div className={`progress-step ${step >= 1 ? 'active' : ''}`}>1. Identity</div>
     <div className={`progress-step ${step >= 2 ? 'active' : ''}`}>2. Security</div>
@@ -24,7 +24,7 @@ const ProgressBar = ({ step }) => (
 );
 
 const SeedPhraseGrid = ({ phrase }) => (
-  // FIX 3: Added missing quotes around className
+  // FIX: Added missing quotes
   <div className="seed-phrase-grid">
     {phrase.map((word, index) => (
       <div
@@ -98,36 +98,41 @@ const RegisterPage = () => {
       }
 
       // ==========================================
-      // BACKEND INTEGRATION (Matches your server.js)
+      // BACKEND INTEGRATION
+      // Sending Email + Encrypted Seed
       // ==========================================
       
-      // Step A: Get Nonce from Backend
+      // Step A: Get Nonce
       const nonceRes = await axios.post(`${BACKEND_URL}/auth/wallet/nonce`, {
         walletAddress: wallet.address
       });
 
       const { messageToSign } = nonceRes.data;
 
-      // Step B: Sign message using Wallet (Frontend)
+      // Step B: Sign message
       const signature = await wallet.signMessage(messageToSign);
 
-      // Step C: Verify Signature with Backend
+      // Step C: Verify Signature AND Sync Wallet Data
+      // We now send: email, encryptedSeed, iv
       const verifyRes = await axios.post(`${BACKEND_URL}/auth/wallet/verify`, {
         walletAddress: wallet.address,
         signature,
         message: messageToSign,
-        walletType: 'created'
+        walletType: 'created',
+        email: email, // <--- SEND EMAIL
+        encryptedSeed: encryptedSeed.data, // <--- SEND ENCRYPTED SEED
+        iv: encryptedSeed.iv // <--- SEND IV
       });
 
       // 4. Store Auth Token
       const { token, user } = verifyRes.data;
       localStorage.setItem('authToken', token);
 
-      // 5. Store Encrypted Wallet Data Locally
+      // 5. Store Encrypted Wallet Data Locally (Redundant but good for offline access)
       localStorage.setItem('wallet_data', JSON.stringify({
         email,
         address: wallet.address,
-        encryptedSeed,
+        encryptedSeed: encryptedSeed.data, // Ensure we store the raw string
         iv: encryptedSeed.iv
       }));
 
@@ -144,7 +149,7 @@ const RegisterPage = () => {
   };
 
   return (
-    // FIX 4: Added missing quotes around className
+    // FIX: Added missing quotes
     <div className="signup-page">
       <div className="signup-card">
         <h2>Create Wallet</h2>
