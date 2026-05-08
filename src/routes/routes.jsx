@@ -18,6 +18,9 @@ import Profile from '../pages/Profile';
 import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
 
+// 404 page
+import NotFound from '../pages/NotFound';
+
 const AppRoutes = () => {
   const location = useLocation();
 
@@ -37,6 +40,9 @@ const AppRoutes = () => {
         <Route path="/profile" element={<Profile />} />
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
+
+        {/* ✅ 404 CATCH-ALL ROUTE */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </AnimatePresence>
   );
