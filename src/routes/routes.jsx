@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 
 // Pages
 import Home from '../pages/Home';
+import KYCPage from '../pages/KYCPage';
 import Wallet from '../pages/Wallet';
 import SettingsPage from '../pages/SettingsPage';
 import CryptoSticks from '../pages/CryptoSticks';
@@ -29,7 +30,7 @@ const AppRoutes = () => {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Home />} />
-        <Route path="/home" element={<Home />} />
+        <Route path="/kyc" element={<KYCPage />} />
         <Route path="/wallet" element={<Wallet />} />
         <Route path="/crypto-sticks" element={<CryptoSticks />} />
         <Route path="/search" element={<Search />} />
