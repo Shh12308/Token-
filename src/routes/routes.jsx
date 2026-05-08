@@ -11,6 +11,7 @@ import Search from '../pages/Search';
 import NftMarketplace from '../pages/NftMarketplace';
 import Activity from '../pages/Activity';
 import Security from '../pages/Security';
+import CoinPricePage from '../pages/CoinPricePage';
 
 import Profile from '../pages/Profile';
 
@@ -34,7 +35,7 @@ const AppRoutes = () => {
         <Route path="/search" element={<Search />} />
         <Route path="/nft" element={<NftMarketplace />} />
         <Route path="/activity" element={<Activity />} />
-        
+        <Route path="/coinprice" element={<CoinPricePage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/security" element={<Security />} />
         <Route path="/profile" element={<Profile />} />
