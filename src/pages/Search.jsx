@@ -1,78 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiSearch, FiTrendingUp, FiClock, FiExternalLink, FiX, FiFilter, FiLock, FiUnlock, FiRefreshCw } from 'react-icons/fi';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 
-const BACKEND_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
-
+// Simple, Browser-like UI using CSS variables from your GlobalStyles
 const Search = () => {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [results, setResults] = useState([]);
-  const [searchHistory, setSearchHistory] = useState([]);
-  const [showFilters, setShowFilters] = useState(false);
-  
-  const [filters, setFilters] = useState({
-    type: 'all',
-    chain: 'all',
-    time: 'all'
-  });
-
-  // Load history on mount
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('searchHistory') || '[]');
-      setSearchHistory(saved);
-    } catch (err) {
-      console.error('Failed to load history:', err);
-    }
-  }, []);
+  const [results, setResults] = useState([]); // Stores standard search results
+  const [error, setError] = useState(null);
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!query.trim()) {
-      return;
-    }
+    if (!query || !query.trim()) return;
 
     setLoading(true);
-    setError('');
-    setResults([]); // Clear previous results immediately
+    setError(null);
 
     try {
-      // Add to history
-      const newHistory = [query, ...searchHistory.filter((q) => q !== query)].slice(0, 10)];
-      setSearchHistory(newHistory);
-      localStorage.setItem('searchHistory', JSON.stringify(newHistory));
-
-      // Simulate search with CoinGecko
-      const response = await fetch(`https://api.coingecko.com/api/v3/search?query=${query}`);
+      // Use DuckDuckGo API (Privacy focused, returns JSON)
+      // This is much more reliable than Google Search API which requires proxy setup for JS clients
+      const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&no_redirect=1`);
       const data = await response.json();
-
-      const formattedResults = data.coins.map((coin) => {
-        return {
-          id: coin.id,
-          title: coin.name,
-          symbol: coin.symbol.toUpperCase(),
-          url: `https://www.coingecko.com/en/coins/${coin.id}`,
-          description: `Price: ${coin.current_price ? coin.current_price.toFixed(2) : 'N/A'}. Market Cap: ${coin.market_cap_rank ? coin.market_cap_rank.toLocaleString() : 'N/A'}.`,
-          type: 'market',
-          timestamp: new Date().toISOString()
-        };
-      });
+      
+      const formattedResults = (data.RelatedTopics || []).map(item => ({
+        id: item.FirstURL || item.Text,
+        title: item.Text,
+        url: item.FirstURL,
+        displayUrl: item.FirstURL,
+        description: `Definition: ${item.Text}`,
+        favicon: 'https://duckduckgo.com/favicon.ico', // Standard DuckDuckGo icon
+      }));
 
       setResults(formattedResults);
     } catch (err) {
-      console.error("Search Error:", err);
-      setError("Failed to fetch search results. Please try again.");
-      setResults([]); // Ensure empty results on error
+      console.error('Search failed:', err);
+      setError('Failed to fetch search results.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const clearHistory = () => {
-    setSearchHistory([]);
-    localStorage.removeItem('searchHistory');
   };
 
   return (
@@ -80,168 +44,54 @@ const Search = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="search-container"
+        transition={{ duration: 0.3 }}
       >
-        {/* Search Header */}
-        <div className="search-header">
-          <h1 className="page-title">
-            <FiSearch />
-            Search
-          </h1>
-          <button 
-            className={`icon-btn ${showFilters ? 'active' : ''}`} 
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <FiFilter />
-            Filters
-          </button>
-          {searchHistory.length > 0 && (
-            <button 
-              className="icon-btn" 
-              onClick={clearHistory}
-            >
-              <FiX />
-              Clear History
-            </button>
-          )}
-        </div>
+        <h1>Search</h1>
 
-        {/* Search Input */}
-        <div className="search-input-wrapper">
-          <FiSearch className="search-icon" />
+        {/* Centered Search Bar */}
+        <div className="search-container">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch(e)}
-            placeholder="Search tokens, NFTs, or DApps..."
+            placeholder="Search the web..."
             className="search-input"
-            disabled={loading}
           />
           <button 
             onClick={handleSearch}
-            className="search-submit"
             disabled={loading || !query.trim()}
+            className="search-button"
           >
-            {loading ? <FiRefreshCw className="spin" /> : <FiTrendingUp />}
+            {loading ? '...' : 'Search'}
           </button>
         </div>
 
-        {/* Filters Panel */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="filters-panel"
-            >
-              <div className="filter-group">
-                <label>Category</label>
-                <select 
-                  value={filters.type}
-                  onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                  className="filter-select"
-                >
-                  <option value="all">All Assets</option>
-                  <option value="web">Web Pages</option>
-                  <option value="dapp">DApps</option>
-                  <option value="nft">NFTs</option>
-                  <option value="defi">DeFi</option>
-                  <option value="news">News</option>
-                </select>
-              </div>
-              
-              <div className="filter-group">
-                <label>Network</label>
-                <select 
-                  value={filters.chain}
-                  onChange={(e) => setFilters({ ...filters, chain: e.target.value })}
-                  className="filter-select"
-                >
-                  <option value="all">All Chains</option>
-                  <option value="ethereum">Ethereum</option>
-                  <option value="polygon">Polygon</option>
-                  <option value="bsc">BSC</option>
-                  <option value="arbitrum">Arbitrum</option>
-                  <option value="optimism">Optimism</option>
-                  <option value="avalanche">Avalanche</option>
-                  <option value="fantom">Fantom</option>
-                  <option value="base">Base</option>
-                </select>
-              </div>
-
-              <button 
-                onClick={() => setShowFilters(false)}
-                className="apply-btn"
-              >
-                Apply Filters
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Error Message */}
+        {/* Status Messages */}
         {error && (
           <div className="error-message">
-            <FiLock />
             {error}
           </div>
         )}
 
         {/* Search Results */}
-        <AnimatePresence mode="wait">
-          {results.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="results-list"
+        <div className="results-list">
+          {results.map((result, index) => (
+            <a 
+              key={index}
+              href={result.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="result-item"
             >
-              <div className="results-header">
-                <h3>Results ({results.length})</h3>
-                <span className="search-info">
-                  {filters.type !== 'all' ? filters.type : 'Global'} • {filters.chain !== 'all' ? filters.chain : 'All Networks'}
-                </span>
+              <img src={result.favicon} alt="icon" className="result-icon" />
+              <div className="result-content">
+                <h3 className="result-title">{result.title}</h3>
+                <p className="result-url">{result.displayUrl}</p>
+                <p className="result-desc">{result.description}</p>
               </div>
-              
-              {results.map((result, index) => (
-                <motion.a
-                  key={result.id}
-                  href={result.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="result-item"
-                >
-                  <div className="result-header">
-                    <h4 className="result-title">
-                      {result.title}
-                    </h4>
-                    <span className="result-type">{result.type}</span>
-                  </div>
-                  
-                  <div className="result-url">
-                    <FiExternalLink size={12} />
-                    <span className="result-url-text">{result.url.replace(/^https?:\/\//, '')}</span>
-                  </div>
-                  
-                  <p className="result-description">{result.description}</p>
-                  
-                  <div className="result-footer">
-                    <span className="result-time">
-                      <FiClock size={12} />
-                      {new Date(result.timestamp).toLocaleDateString()}
-                    </span>
-                    <button className="save-btn">Save</button>
-                  </div>
-                </motion.a>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </a>
+          ))}
+        </div>
       </motion.div>
     </div>
   );
