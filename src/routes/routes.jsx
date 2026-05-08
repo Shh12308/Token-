@@ -11,7 +11,7 @@ import Search from '../pages/Search';
 import NftMarketplace from '../pages/NftMarketplace';
 import Activity from '../pages/Activity';
 import Security from '../pages/Security';
-import Browser from '../pages/Browser';
+
 import Profile from '../pages/Profile';
 
 // Auth
@@ -34,7 +34,7 @@ const AppRoutes = () => {
         <Route path="/search" element={<Search />} />
         <Route path="/nft" element={<NftMarketplace />} />
         <Route path="/activity" element={<Activity />} />
-        <Route path="/browser" element={<Browser />} />
+        
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/security" element={<Security />} />
         <Route path="/profile" element={<Profile />} />
