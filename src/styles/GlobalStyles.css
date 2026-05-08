@@ -1,114 +1,139 @@
 
   /* ==========================================
-     VARIABLES: META x COINBASE MIX
+     VARIABLES: UNIQUE "PURPLE NOIR" THEME
      ========================================== */
   :root {
-    --bg-primary: #09090b;        /* MetaMask Deep Dark */
-    --bg-secondary: #15171e;      /* Card Background */
-    --bg-input: #0c0d10;         /* Input Background */
-    
-    --mm-orange: #f6851b;          /* MetaMask Brand Color */
-    --cb-blue: #0052ff;            /* Coinbase Brand Color */
-    --gradient-mid: #8a3e9c;        /* Bridge color for gradient */
-    
-    --text-primary: #ffffff;
-    --text-secondary: #a1a1aa;
-    
-    --border-color: #2a2d36;
-    --border-glow: rgba(0, 82, 255, 0.3);
+    --bg-dark: #050505;
+    --bg-glass: rgba(20, 20, 25, 0.6);
+    --bg-input: #0c0c10;
+    --bg-card: #121216;
+
+    --primary-purple: #8b5cf6; /* Unique Brand Color */
+    --primary-blue: #3b82f6;
+    --accent-pink: #d946ef;
+
+    --text-main: #ffffff;
+    --text-muted: #9ca3af;
+    --text-dark: #e2e8f0;
+
+    --border-color: rgba(255, 255, 255, 0.1);
+    --border-glow: rgba(139, 92, 246, 0.4);
+    --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.3);
   }
 
   /* ==========================================
-     RESET & TYPOGRAPHY
+     RESET
      ========================================== */
   *, *::before, *::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    /* MetaMask Style: Tight tracking */
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
-    height: 100vh;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
   }
 
-  /* Tight, bold headings typical of wallets */
-  h1, h2, h3 {
+  /* ==========================================
+     TYPOGRAPHY
+     ========================================== */
+  h1, h2, h3, h4, h5, h6 {
     font-weight: 700;
-    letter-spacing: -0.02em;
-    color: var(--text-primary);
+    color: var(--text-main);
+    margin-bottom: 1rem;
   }
 
   p {
-    color: var(--text-secondary);
-    line-height: 1.6;
+    color: var(--text-muted);
+    line-height: 1.5;
     font-size: 0.95rem;
   }
 
   a {
-    color: var(--cb-blue);
+    color: var(--primary-blue);
     text-decoration: none;
-    transition: all 0.2s ease;
+    transition: color 0.2s ease;
     &:hover {
-      opacity: 0.8;
+      color: var(--primary-purple);
       text-decoration: underline;
     }
   }
 
   /* ==========================================
-     INPUTS: COINBASE STYLE (Clean & Crisp)
+     CARDS & GLASSMORPHISM
      ========================================== */
-  input, textarea {
+  .card, 
+  .login-card, 
+  .signup-card,
+  .wallet-card, 
+  .modal-content,
+  .kyc-page,
+  .settings-section,
+  .pools-container,
+  .filters-panel,
+  .search-container,
+  .browser-container {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: var(--shadow-soft);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  /* ==========================================
+     INPUTS (COINBASE STYLE: CRISP & CLEAN)
+     ========================================== */
+  input, textarea, select {
     width: 100%;
     background-color: var(--bg-input);
-    border: 1px solid var(--border-color);
+    border: 2px solid #333;
     border-radius: 12px;
-    padding: 16px;
-    color: var(--text-primary);
+    padding: 14px 16px;
+    color: var(--text-main);
     font-size: 15px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s ease;
+    margin-bottom: 16px;
+    font-family: inherit;
 
-    &::placeholder {
-      color: #4b5563;
-      font-weight: 500;
+    &:focus {
+      border-color: var(--primary-blue);
+      outline: none;
+      box-shadow: 0 0 0 4px var(--border-glow);
     }
 
-    /* Coinbase Style Focus: Blue Glow */
-    &:focus {
-      outline: none;
-      border-color: var(--cb-blue);
-      box-shadow: 0 0 0 4px var(--border-glow);
+    &::placeholder {
+      color: var(--text-muted);
     }
   }
 
   /* ==========================================
-     BUTTONS: UNIQUE MIX GRADIENT
+     BUTTONS: UNIQUE GRADIENT (PURPLE -> BLUE)
      ========================================== */
   button, .btn-primary {
-    /* Gradient: Orange -> Purple -> Blue */
-    background: linear-gradient(135deg, var(--mm-orange) 0%, var(--gradient-mid) 50%, var(--cb-blue) 100%);
-    color: white;
+    appearance: none;
     border: none;
+    cursor: pointer;
+    width: 100%;
     
-    /* Coinbase Style: Pill Shape */
-    border-radius: 50px;
+    /* Unique Gradient: Purple -> Blue */
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-blue) 100%);
+    color: white;
     
-    padding: 14px 28px;
+    border-radius: 12px;
+    padding: 14px 24px;
     font-size: 16px;
     font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
+    
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     
     &:hover {
       transform: translateY(-2px);
@@ -124,34 +149,42 @@
       opacity: 0.5;
       cursor: not-allowed;
       transform: none;
-      box-shadow: none;
+    }
+  }
+
+  .button-secondary {
+    background: transparent;
+    border: 1px solid var(--primary-blue);
+    color: var(--primary-blue);
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-weight: 500;
+    &:hover {
+      background: rgba(59, 130, 246, 0.1);
+    }
+  }
+
+  .button-danger {
+    background: rgba(255, 50, 50, 0.1);
+    border: 1px solid #ff4d4d;
+    color: #ff4d4d;
+    &:hover {
+      background: rgba(255, 50, 50, 0.2);
     }
   }
 
   /* ==========================================
-     CARDS: GLASSMORPHISM
+     COMPONENT SPECIFIC STYLES
      ========================================== */
-  .card, .login-card, .signup-card {
-    background: rgba(21, 23, 30, 0.65);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 24px;
-    padding: 32px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  /* ==========================================
-     PROGRESS BAR
-     ========================================== */
+  
+  /* --- PROGRESS BAR --- */
   .progress-bar {
     display: flex;
     justify-content: space-between;
     position: relative;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
     
-    /* Background Line */
+    /* Background line */
     &::before {
       content: '';
       position: absolute;
@@ -159,7 +192,7 @@
       left: 0;
       width: 100%;
       height: 2px;
-      background: var(--border-color);
+      background: #333;
       z-index: 0;
     }
   }
@@ -167,25 +200,24 @@
   .progress-step {
     position: relative;
     z-index: 1;
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    padding: 8px 20px;
-    border-radius: 12px;
+    background: var(--bg-card);
+    color: var(--text-muted);
+    padding: 10px 20px;
+    border-radius: 8px;
     font-size: 14px;
     font-weight: 600;
-    transition: all 0.4s ease;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
 
     &.active {
-      /* Active Gradient */
-      background: linear-gradient(135deg, var(--mm-orange), var(--cb-blue));
+      background: var(--primary-purple);
       color: white;
-      box-shadow: 0 0 15px var(--border-glow);
+      border-color: var(--primary-purple);
+      box-shadow: 0 0 10px var(--border-glow);
     }
   }
 
-  /* ==========================================
-     SEED PHRASE GRID
-     ========================================== */
+  /* --- SEED PHRASE GRID --- */
   .seed-phrase-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -199,53 +231,262 @@
     padding: 12px;
     border-radius: 8px;
     text-align: center;
-    color: var(--text-primary);
+    color: var(--text-main);
     cursor: pointer;
-    transition: all 0.2s;
-    font-size: 15px;
-
+    transition: all 0.2s ease;
+    font-size: 14px;
+    
     &:hover {
-      border-color: var(--mm-orange);
-      background: var(--bg-secondary);
+      border-color: var(--primary-purple);
+      background: var(--bg-card);
       transform: translateY(-2px);
     }
   }
 
-  /* ==========================================
-     SCROLLBAR
-     ========================================== */
-  ::-webkit-scrollbar {
-    width: 6px;
+  /* --- MARKET CARDS --- */
+  .market-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
   }
-  ::-webkit-scrollbar-track {
-    background: var(--bg-primary);
+
+  .market-card {
+    background: rgba(30, 30, 35, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 16px;
+    transition: transform 0.2s ease;
+    
+    &:hover {
+      transform: translateY(-4px);
+      border-color: var(--primary-purple);
+    }
   }
-  ::-webkit-scrollbar-thumb {
-    background: #2a2d36;
-    border-radius: 3px;
+
+  .market-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
   }
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--mm-orange);
+
+  .crypto-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+  }
+
+  .crypto-info {
+    margin-left: 12px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .crypto-name {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text-main);
+  }
+
+  .crypto-symbol {
+    font-size: 12px;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 4px;
+  }
+
+  .market-price {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  .change {
+    font-size: 14px;
+    margin-left: 8px;
+    
+    &.positive {
+      color: #00e676;
+    }
+    &.negative {
+      color: #ff4d4d;
+    }
+  }
+
+  /* --- DASHBOARD & LAYOUTS --- */
+  .dashboard-container {
+    min-height: 100vh;
+    background-color: var(--bg-dark);
+    /* Animated background effect */
+    background-image: radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
+                      radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+    color: var(--text-main);
+  }
+
+  .dashboard-content {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .dashboard-header {
+    display: flex;
+    justify-content: flex-end; /* Buttons on right */
+    margin-bottom: 24px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 12px;
+    background: rgba(255,255,255,0.05);
+    padding: 8px 16px;
+    border-radius: 50px;
+  }
+
+  /* --- NFT MARKETPLACE & STAKING --- */
+  .nft-browse-page {
+    padding: 20px;
+  }
+
+  .nfts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+  }
+
+  .pool {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+    
+    &:hover {
+      border-color: var(--primary-purple);
+    }
+  }
+
+  /* --- SEARCH & BROWSER --- */
+  .search-page, .browser-page {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .search-input-wrapper {
+    position: relative;
+    margin-bottom: 20px;
+  }
+
+  .search-input {
+    width: 100%;
+    padding-left: 48px;
+    font-size: 16px;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+  }
+
+  .results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .result-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    padding: 16px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      border-color: var(--primary-blue);
+    }
+  }
+
+  /* --- FORMS & MODALS --- */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .modal-body {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  /* --- UTILITY CLASSES --- */
+  .error {
+    color: #ff4d4d;
+    background: rgba(255, 77, 77, 0.1);
+    padding: 8px;
+    border-radius: 6px;
+    text-align: center;
+    margin-top: 12px;
+  }
+
+  .success-message {
+    color: #00e676;
+    background: rgba(0, 230, 118, 0.1);
+    padding: 8px;
+    border-radius: 6px;
+    text-align: center;
+    margin-top: 12px;
   }
 
   /* ==========================================
      ANIMATIONS
      ========================================== */
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
-  /* Utility for layout centers */
-  .flex-center {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
   }
