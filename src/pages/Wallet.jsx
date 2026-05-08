@@ -1,4 +1,4 @@
-import { useGetBalancesQuery } from '../store/services/walletApi';
+import { useGetBalancesQuery } from '../app/services/walletApi';
 
 const Wallet = () => {
   const [view, setView] = useState('quick');
