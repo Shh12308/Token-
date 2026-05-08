@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useGetMarketsQuery } from './app/services/coingeckoApi.js';
+import { coingeckoApi } from '../app/services/coingeckoApi.js';
 
 const CoinPricePage = () => {
   const { data, isLoading, error } = useGetMarketsQuery();
