@@ -35,9 +35,9 @@ export const Web3Provider = ({ children }) => {
         return;
       }
 
-      const ethProvider = new ethers.JsonRpcProvider(
-        `https://mainnet.infura.io/v3/${infuraKey}`
-      );
+      const ethProvider = new JsonRpcProvider(
+  `https://mainnet.infura.io/v3/${infuraKey}`
+);
 
       setProvider(ethProvider);
     } catch (err) {
