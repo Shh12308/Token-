@@ -8,6 +8,10 @@ import {
   TextField,
   MenuItem,
 } from '@mui/material';
+import QuickActionsView from '../components/wallet/QuickActionsView';
+import SendView from '../components/wallet/SendView';
+import ReceiveView from '../components/wallet/ReceiveView';
+import SwapView from '../components/wallet/SwapView';
 
 import { useGetBalancesQuery, useCreateBuySessionMutation } from '../app/services/walletApi';
 
