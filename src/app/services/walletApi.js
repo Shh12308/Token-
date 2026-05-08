@@ -1,4 +1,3 @@
-// src/app/services/walletApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const BASE_URL = 'https://blockvault-backend-production.up.railway.app/api';
@@ -33,6 +32,28 @@ export const walletApi = createApi({
         body,
       }),
     }),
+
+    // --- STAKING ENDPOINTS ---
+
+    // Fetch available staking/farming pools
+    getStakingPools: builder.query({
+      query: () => '/staking/pools',
+      providesTags: ['StakingPool'], // Useful for cache invalidation
+    }),
+
+    // Fetch historical APR data for the chart
+    getStakingHistory: builder.query({
+      query: ({ poolId, days = 30 }) => `/staking/history?poolId=${poolId}&days=${days}`,
+    }),
+
+    // Stake tokens
+    stakeTokens: builder.mutation({
+      query: (body) => ({
+        url: '/staking/stake',
+        method: 'POST',
+        body,
+      }),
+    }),
   }),
 });
 
@@ -41,4 +62,8 @@ export const {
   useGetUserQuery,
   useCreateBuySessionMutation,
   useSwapTokenMutation,
+  // Export new hooks
+  useGetStakingPoolsQuery,
+  useGetStakingHistoryQuery,
+  useStakeTokensMutation,
 } = walletApi;
