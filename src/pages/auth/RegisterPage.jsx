@@ -13,7 +13,7 @@ import {
   encryptData 
 } from '../../utils/wallet';
 
-const BACKEND_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+const BACKEND_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
 const ProgressBar = ({ step }) => (
   <div className="progress-bar">
