@@ -1,100 +1,175 @@
-// CryptoSticks.js - Staking and Farming Page
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios'; // <--- ADDED
 import { 
   FiTrendingUp, FiZap, FiLock, FiUnlock, FiDollarSign, FiClock,
-  FiChevronDown, FiChevronUp, FiInfo, FiExternalLink, FiRefreshCw
+  FiChevronDown, FiChevronUp, FiInfo, FiExternalLink, FiRefreshCw,
+  FiX, FiCheckCircle
 } from 'react-icons/fi';
 import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
 import { StakingPool, FarmingPool, YieldCalculator } from '../components/staking';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 const CryptoSticks = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('staking');
   const [expandedPool, setExpandedPool] = useState(null);
   const [selectedPool, setSelectedPool] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [stakingPools, setStakingPools] = useState([]);
+  const [farmingPools, setFarmingPools] = useState([]);
+  
+  // Modal States
+  const [modalAction, setModalAction] = useState('stake'); // 'stake' | 'unstake'
   const [stakeAmount, setStakeAmount] = useState('');
-  const [showCalculator, setShowCalculator] = useState(false);
+  const [pendingTx, setPendingTx] = useState(false);
+  const [historyData, setHistoryData] = useState(null); // For chart
 
-  const stakingPools = [
-    {
-      id: 1,
-      token: 'ETH',
-      apr: 5.2,
-      tvl: 125000000,
-      lockPeriod: 'Flexible',
-      minAmount: 0.1,
-      icon: '🔷',
-      rewards: ['ETH', 'BEAN'],
-      tier: 'Premium'
+  // --- 1. FETCH DATA FROM BACKEND ---
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const res = await axios.get(`${API_URL}/staking/pools`);
+        
+        const pools = res.data.pools;
+        
+        // Filter based on type
+        setStakingPools(pools.filter(p => p.type === 'staking'));
+        setFarmingPools(pools.filter(p => p.type === 'farming'));
+      } catch (err) {
+        console.error("Failed to fetch pools", err);
+        // Fallback to dummy data if backend fails (optional)
+        setStakingPools([
+           { id:1, token: 'ETH', apr: 5.2, tvl: 125000000, lockPeriod: 'Flexible' }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // --- 2. FETCH CHART DATA WHEN POOL SELECTED ---
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!selectedPool) return;
+      try {
+        const res = await axios.get(`${API_URL}/staking/history`, {
+          params: { poolId: selectedPool.id, days: 30 }
+        });
+        setHistoryData(res.data);
+      } catch (err) {
+        console.error("Failed to fetch history", err);
+      }
+    };
+    fetchHistory();
+  }, [selectedPool]);
+
+  // --- 3. CHART CONFIGURATION ---
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(17, 24, 39, 0.9)',
+        titleColor: '#fff',
+        bodyColor: '#fff',
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1
+      }
     },
-    {
-      id: 2,
-      token: 'BEAN',
-      apr: 12.8,
-      tvl: 45000000,
-      lockPeriod: '30 days',
-      minAmount: 100,
-      icon: '🫘',
-      rewards: ['BEAN', 'ETH'],
-      tier: 'Standard'
+    scales: {
+      x: { 
+        grid: { display: false },
+        ticks: { color: '#9CA3AF', maxTicksLimit: 6 }
+      },
+      y: { 
+        grid: { color: 'rgba(255,255,255,0.05)' },
+        ticks: { color: '#9CA3AF' }
+      }
     },
-    {
-      id: 3,
-      token: 'USDC',
-      apr: 8.5,
-      tvl: 89000000,
-      lockPeriod: 'Flexible',
-      minAmount: 10,
-      icon: '💵',
-      rewards: ['USDC', 'BEAN'],
-      tier: 'Premium'
+    elements: {
+      line: { tension: 0.4 }, // Smooth curve
+      point: { radius: 0, hoverRadius: 6 }
+    },
+    interaction: {
+      mode: 'nearest',
+      axis: 'x',
+      intersect: false
     }
-  ];
+  };
 
-  const farmingPools = [
-    {
-      id: 1,
-      pair: 'ETH/USDC',
-      apr: 18.5,
-      tvl: 67000000,
-      lpToken: 'UNI-V2',
-      icon: '🌊',
-      rewards: ['UNI', 'BEAN'],
-      risk: 'Medium'
-    },
-    {
-      id: 2,
-      pair: 'BEAN/ETH',
-      apr: 25.3,
-      tvl: 34000000,
-      lpToken: 'UNI-V2',
-      icon: '🌾',
-      rewards: ['UNI', 'BEAN'],
-      risk: 'High'
-    },
-    {
-      id: 3,
-      pair: 'USDT/USDC',
-      apr: 6.8,
-      tvl: 120000000,
-      lpToken: 'UNI-V2',
-      icon: '💧',
-      rewards: ['UNI', 'BEAN'],
-      risk: 'Low'
+  const generateChartData = () => {
+    if (!historyData) return null;
+    return {
+      labels: historyData.labels,
+      datasets: [{
+        label: 'APR (%)',
+        data: historyData.data,
+        borderColor: '#8b5cf6',
+        backgroundColor: (context) => {
+          const ctx = context.chart.ctx;
+          const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+          gradient.addColorStop(0, 'rgba(139, 92, 246, 0.4)');
+          gradient.addColorStop(1, 'rgba(139, 92, 246, 0.0)');
+          return gradient;
+        },
+        fill: true,
+        borderWidth: 2,
+        pointBackgroundColor: '#8b5cf6'
+      }]
+    };
+  };
+
+  // --- 4. ACTION HANDLERS ---
+  const handleStake = async () => {
+    if (!stakeAmount || parseFloat(stakeAmount) <= 0) return;
+    
+    setPendingTx(true);
+    try {
+      // Call Backend to initiate transaction (or get unsigned TX)
+      await axios.post(`${API_URL}/staking/stake`, {
+        poolId: selectedPool.id,
+        amount: stakeAmount
+      });
+      
+      // Close modal and show success
+      setSelectedPool(null);
+      setStakeAmount('');
+    } catch (err) {
+      console.error("Staking failed", err);
+    } finally {
+      setPendingTx(false);
     }
-  ];
-
-  const chartData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    datasets: [{
-      label: 'APR History',
-      data: [4.8, 5.1, 5.3, 5.0, 5.4, 5.2],
-      borderColor: '#8b5cf6',
-      backgroundColor: 'rgba(139, 92, 246, 0.1)',
-      tension: 0.4
-    }]
   };
 
   return (
@@ -117,30 +192,12 @@ const CryptoSticks = () => {
             <p className="page-subtitle">Stake and farm your crypto to earn rewards</p>
           </div>
           <div className="header-actions">
-            <button className="calculator-btn" onClick={() => setShowCalculator(!showCalculator)}>
-              <FiDollarSign />
-              Yield Calculator
-            </button>
-            <button className="tutorial-btn">
-              <FiExternalLink />
-              Tutorial
+            <button className="refresh-btn" onClick={() => window.location.reload()}>
+              <FiRefreshCw />
             </button>
           </div>
         </div>
       </motion.div>
-
-      <AnimatePresence>
-        {showCalculator && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="calculator-section"
-          >
-            <YieldCalculator pools={[...stakingPools, ...farmingPools]} />
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <div className="tabs-container">
         <div className="tabs">
@@ -161,87 +218,37 @@ const CryptoSticks = () => {
         </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        {activeTab === 'staking' ? (
-          <motion.div
-            key="staking"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="pools-container"
-          >
-            <div className="pools-header">
-              <h2>Available Staking Pools</h2>
-              <div className="stats-row">
-                <div className="stat-card">
-                  <span className="stat-label">Total TVL</span>
-                  <span className="stat-value">$259M</span>
-                </div>
-                <div className="stat-card">
-                  <span className="stat-label">Avg APR</span>
-                  <span className="stat-value">8.8%</span>
-                </div>
-                <div className="stat-card">
-                  <span className="stat-label">Your Earnings</span>
-                  <span className="stat-value">$1,234.56</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pools-grid">
-              {stakingPools.map((pool) => (
-                <StakingPool 
-                  key={pool.id}
-                  pool={pool}
-                  expanded={expandedPool === pool.id}
-                  onToggle={() => setExpandedPool(expandedPool === pool.id ? null : pool.id)}
-                  onSelect={() => setSelectedPool(pool)}
-                />
-              ))}
-            </div>
-          </motion.div>
+      <div className="pools-container">
+        {loading ? (
+          <div className="loading-spinner">Loading pools...</div>
+        ) : activeTab === 'staking' ? (
+          <div className="pools-grid">
+            {stakingPools.map((pool) => (
+              <StakingPool 
+                key={pool.id}
+                pool={pool}
+                expanded={expandedPool === pool.id}
+                onToggle={() => setExpandedPool(expandedPool === pool.id ? null : pool.id)}
+                onSelect={() => { setSelectedPool(pool); setModalAction('stake'); }}
+              />
+            ))}
+          </div>
         ) : (
-          <motion.div
-            key="farming"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="pools-container"
-          >
-            <div className="pools-header">
-              <h2>Liquidity Farming Pools</h2>
-              <div className="stats-row">
-                <div className="stat-card">
-                  <span className="stat-label">Total TVL</span>
-                  <span className="stat-value">$221M</span>
-                </div>
-                <div className="stat-card">
-                  <span className="stat-label">Avg APR</span>
-                  <span className="stat-value">16.9%</span>
-                </div>
-                <div className="stat-card">
-                  <span className="stat-label">Impermanence Loss</span>
-                  <span className="stat-value">-2.3%</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pools-grid">
-              {farmingPools.map((pool) => (
-                <FarmingPool 
-                  key={pool.id}
-                  pool={pool}
-                  expanded={expandedPool === pool.id}
-                  onToggle={() => setExpandedPool(expandedPool === pool.id ? null : pool.id)}
-                  onSelect={() => setSelectedPool(pool)}
-                />
-              ))}
-            </div>
-          </motion.div>
+          <div className="pools-grid">
+            {farmingPools.map((pool) => (
+              <FarmingPool 
+                key={pool.id}
+                pool={pool}
+                expanded={expandedPool === pool.id}
+                onToggle={() => setExpandedPool(expandedPool === pool.id ? null : pool.id)}
+                onSelect={() => { setSelectedPool(pool); setModalAction('stake'); }}
+              />
+            ))}
+          </div>
         )}
-      </AnimatePresence>
+      </div>
 
-      {/* Staking Modal */}
+      {/* --- ENHANCED STAKING MODAL WITH CHART --- */}
       <AnimatePresence>
         {selectedPool && (
           <motion.div
@@ -252,69 +259,123 @@ const CryptoSticks = () => {
             onClick={() => setSelectedPool(null)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="modal-content"
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="modal-content staking-modal"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="modal-header">
-                <h3>Stake {selectedPool.token}</h3>
-                <button onClick={() => setSelectedPool(null)} className="close-btn">×</button>
+                <div className="pool-header-info">
+                  <span className="pool-icon">{selectedPool.token || 'LP'}</span>
+                  <div>
+                    <h3>{selectedPool.name || `${selectedPool.token} Staking`}</h3>
+                    <span className="badge">Earned: {selectedPool.rewards?.join(', ') || 'Tokens'}</span>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedPool(null)} className="close-btn">
+                  <FiX />
+                </button>
               </div>
               
+              {/* PERFORMANCE CHART */}
+              <div className="chart-container">
+                <div className="chart-header">
+                  <h4>Performance (30 Days)</h4>
+                  <span className="current-apr">
+                    <FiTrendingUp className="up-icon" />
+                    {selectedPool.apr}% APR
+                  </span>
+                </div>
+                <div className="chart-wrapper">
+                  {historyData ? (
+                    <Line data={generateChartData()} options={chartOptions} />
+                  ) : (
+                    <div className="chart-skeleton">Loading chart...</div>
+                  )}
+                </div>
+              </div>
+
               <div className="modal-body">
-                <div className="pool-details">
-                  <div className="detail-row">
-                    <span>APR</span>
-                    <span className="highlight">{selectedPool.apr}%</span>
+                {/* TABS: STAKE | UNSTAKE */}
+                <div className="action-tabs">
+                  <button 
+                    className={`action-tab ${modalAction === 'stake' ? 'active' : ''}`}
+                    onClick={() => setModalAction('stake')}
+                  >
+                    <FiLock /> Stake
+                  </button>
+                  <button 
+                    className={`action-tab ${modalAction === 'unstake' ? 'active' : ''}`}
+                    onClick={() => setModalAction('unstake')}
+                  >
+                    <FiUnlock /> Unstake
+                  </button>
+                </div>
+
+                <div className="stats-grid">
+                  <div className="stat-box">
+                    <small>TVL</small>
+                    <span>${(selectedPool.tvl / 1000000).toFixed(2)}M</span>
                   </div>
-                  <div className="detail-row">
-                    <span>Lock Period</span>
+                  <div className="stat-box">
+                    <small>Lock Period</small>
                     <span>{selectedPool.lockPeriod}</span>
                   </div>
-                  <div className="detail-row">
-                    <span>Min Amount</span>
+                  <div className="stat-box">
+                    <small>Min Stake</small>
                     <span>{selectedPool.minAmount} {selectedPool.token}</span>
                   </div>
                 </div>
 
                 <div className="input-section">
-                  <label>Amount to Stake</label>
+                  <label>
+                    {modalAction === 'stake' ? 'Amount to Stake' : 'Amount to Unstake'}
+                  </label>
                   <div className="input-wrapper">
                     <input
                       type="number"
                       value={stakeAmount}
                       onChange={(e) => setStakeAmount(e.target.value)}
                       placeholder="0.00"
-                      min={selectedPool.minAmount}
                     />
-                    <button className="max-btn">MAX</button>
+                    <div className="input-actions">
+                      <span className="token-symbol">{selectedPool.token}</span>
+                      <button className="max-btn" onClick={() => setStakeAmount('100')}>MAX</button>
+                    </div>
                   </div>
                   <div className="balance-info">
-                    Balance: 10.5 {selectedPool.token}
+                    Available: 142.50 {selectedPool.token}
                   </div>
                 </div>
 
-                <div className="rewards-preview">
-                  <h4>Estimated Rewards</h4>
-                  <div className="reward-item">
-                    <span>Daily</span>
-                    <span>0.025 {selectedPool.token}</span>
+                {/* REWARDS PREVIEW */}
+                {modalAction === 'stake' && (
+                  <div className="rewards-preview">
+                    <div className="preview-row">
+                      <span>Estimated Daily</span>
+                      <span>~{(stakeAmount * (selectedPool.apr / 100) / 365).toFixed(4)} {selectedPool.token}</span>
+                    </div>
+                    <div className="preview-row highlight">
+                      <span>Estimated Yearly</span>
+                      <span>~{(stakeAmount * (selectedPool.apr / 100)).toFixed(2)} {selectedPool.token}</span>
+                    </div>
                   </div>
-                  <div className="reward-item">
-                    <span>Monthly</span>
-                    <span>0.75 {selectedPool.token}</span>
-                  </div>
-                  <div className="reward-item">
-                    <span>Yearly</span>
-                    <span>9.0 {selectedPool.token}</span>
-                  </div>
-                </div>
+                )}
 
-                <button className="stake-btn">
-                  <FiLock />
-                  Stake {stakeAmount || '0'} {selectedPool.token}
+                <button 
+                  className={`stake-btn ${pendingTx ? 'loading' : ''}`}
+                  onClick={handleStake}
+                  disabled={pendingTx || !stakeAmount}
+                >
+                  {pendingTx ? (
+                    <FiRefreshCw className="spin" />
+                  ) : modalAction === 'stake' ? (
+                    <FiLock />
+                  ) : (
+                    <FiUnlock />
+                  )}
+                  {pendingTx ? 'Confirming...' : `${modalAction} ${stakeAmount || '0'} ${selectedPool.token}`}
                 </button>
               </div>
             </motion.div>
