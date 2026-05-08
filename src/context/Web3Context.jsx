@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { JsonRpcProvider } from 'ethers';
+import { ethers } from 'ethers'; // ✅ FIXED IMPORT
 import { getLocalAccount } from '../utils/storage';
 import { decryptData } from '../utils/crypto';
 
@@ -27,7 +27,7 @@ export const Web3Provider = ({ children }) => {
       const acc = getLocalAccount();
       if (acc) setAccount(acc);
 
-      const infuraKey = import.meta.env.VITE_INFURA_KEY || 'PzU4nVhvyzx58iqlooU4p';
+      const infuraKey = import.meta.env.VITE_INFURA_KEY;
 
       if (!infuraKey) {
         console.warn("⚠️ Missing VITE_INFURA_KEY");
@@ -35,9 +35,10 @@ export const Web3Provider = ({ children }) => {
         return;
       }
 
-      const ethProvider = new JsonRpcProvider(
-  `https://mainnet.infura.io/v3/${infuraKey}`
-);
+      // ✅ v6 syntax
+      const ethProvider = new ethers.JsonRpcProvider(
+        `https://mainnet.infura.io/v3/${infuraKey}`
+      );
 
       setProvider(ethProvider);
     } catch (err) {
@@ -65,6 +66,7 @@ export const Web3Provider = ({ children }) => {
       let walletInstance;
 
       try {
+        // ✅ v6 correct usage
         walletInstance = ethers.Wallet.fromPhrase(decryptedSeed).connect(provider);
       } catch (err) {
         console.error("Wallet creation failed:", err);
