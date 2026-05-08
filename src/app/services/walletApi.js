@@ -1,7 +1,7 @@
 // src/app/services/walletApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-const BASE_URL = 'https://YOUR-BACKEND-DOMAIN.com/api';
+const BASE_URL = 'https://blockvault-backend-production.up.railway.app/api';
 
 export const walletApi = createApi({
   reducerPath: 'walletApi',
