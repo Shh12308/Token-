@@ -8,32 +8,36 @@ import {
   TextField,
   MenuItem,
 } from '@mui/material';
+
 import QuickActionsView from '../components/wallet/QuickActionsView';
 import SendView from '../components/wallet/SendView';
 import ReceiveView from '../components/wallet/ReceiveView';
 import SwapView from '../components/wallet/SwapView';
 
-import { useGetBalancesQuery, useCreateBuySessionMutation } from '../app/services/walletApi';
+import {
+  useGetBalancesQuery,
+  useGetUserQuery,
+  useCreateBuySessionMutation,
+} from '../app/services/walletApi';
 
 const Wallet = () => {
   const [view, setView] = useState('quick');
 
-  // 💳 BUY STATE
+  // BUY STATE
   const [openBuy, setOpenBuy] = useState(false);
   const [buyAmount, setBuyAmount] = useState('');
   const [buyCurrency, setBuyCurrency] = useState('ETH');
-  const [ethPrice] = useState(2500); // optional mock price (replace with API)
 
-  const { data, isLoading, error } = useGetBalancesQuery();
-  const [createBuySession, { isLoading: buying }] = useCreateBuySessionMutation();
+  // 🔌 REAL BACKEND CONNECTIONS
+  const { data: balances, isLoading, error } = useGetBalancesQuery();
+  const { data: user } = useGetUserQuery();
+  const [createBuySession, { isLoading: buying }] =
+    useCreateBuySessionMutation();
 
-  const balances = data || {};
+  const walletAddress = user?.walletAddress;
 
-  // 💡 Estimated crypto preview
-  const estimatedCrypto =
-    buyAmount && ethPrice
-      ? (Number(buyAmount) / ethPrice).toFixed(6)
-      : 0;
+  // backend should send estimates
+  const estimated = balances?.estimates?.[buyCurrency] || 0;
 
   const handleBuy = async () => {
     if (!buyAmount || Number(buyAmount) < 20) {
@@ -41,17 +45,23 @@ const Wallet = () => {
       return;
     }
 
+    if (!walletAddress) {
+      alert('Wallet not connected');
+      return;
+    }
+
     try {
       const res = await createBuySession({
         amount: Number(buyAmount),
         currency: buyCurrency,
-        walletAddress: 'USER_WALLET_ADDRESS',
+        walletAddress,
       }).unwrap();
 
-      window.location.href = res.url; // redirect to provider
+      // redirect to provider (MoonPay / Transak / Ramp)
+      window.location.href = res.url;
     } catch (err) {
       console.error(err);
-      alert('Failed to create buy session');
+      alert('Buy failed');
     }
   };
 
@@ -72,19 +82,18 @@ const Wallet = () => {
     <Box sx={{ width: '100%', maxWidth: 800, mx: 'auto', mt: 4 }}>
       <Typography variant="h4">CryptoBean Wallet</Typography>
 
-      {/* BALANCE DISPLAY */}
+      {/* BALANCES */}
       <Paper sx={{ p: 2, mb: 2 }}>
-        {isLoading && <p>Loading balances...</p>}
-        {error && <p style={{ color: 'red' }}>Failed to load balances</p>}
+        {isLoading && <p>Loading...</p>}
+        {error && <p style={{ color: 'red' }}>API Error</p>}
 
         {!isLoading && !error && (
           <div>
-            <p>ETH: {balances.eth || 0}</p>
-            <p>USDC: {balances.usdc || 0}</p>
+            <p>ETH: {balances?.eth ?? 0}</p>
+            <p>USDC: {balances?.usdc ?? 0}</p>
           </div>
         )}
 
-        {/* 💳 BUY BUTTON */}
         <Button
           variant="contained"
           sx={{ mt: 2 }}
@@ -94,7 +103,7 @@ const Wallet = () => {
         </Button>
       </Paper>
 
-      {/* MODAL */}
+      {/* BUY MODAL */}
       <Modal open={openBuy} onClose={() => setOpenBuy(false)}>
         <Box
           sx={{
@@ -107,21 +116,19 @@ const Wallet = () => {
         >
           <Typography variant="h6">Buy Crypto</Typography>
 
-          {/* AMOUNT INPUT */}
           <TextField
             fullWidth
-            label="Enter USD amount"
+            label="USD Amount"
             type="number"
             value={buyAmount}
             onChange={(e) => setBuyAmount(e.target.value)}
             sx={{ mt: 2 }}
           />
 
-          {/* CRYPTO SELECT */}
           <TextField
             select
             fullWidth
-            label="Choose Crypto"
+            label="Crypto"
             value={buyCurrency}
             onChange={(e) => setBuyCurrency(e.target.value)}
             sx={{ mt: 2 }}
@@ -131,12 +138,10 @@ const Wallet = () => {
             <MenuItem value="USDC">USDC</MenuItem>
           </TextField>
 
-          {/* 💡 OPTIONAL PREVIEW */}
-          <Typography sx={{ mt: 2, fontSize: 14 }}>
-            You will receive approx: <b>{estimatedCrypto} {buyCurrency}</b>
+          <Typography sx={{ mt: 2 }}>
+            Estimated: <b>{estimated} {buyCurrency}</b>
           </Typography>
 
-          {/* ACTIONS */}
           <Button
             fullWidth
             variant="contained"
@@ -147,18 +152,14 @@ const Wallet = () => {
             {buying ? 'Processing...' : 'Continue'}
           </Button>
 
-          <Button
-            fullWidth
-            sx={{ mt: 1 }}
-            onClick={() => setOpenBuy(false)}
-          >
+          <Button fullWidth sx={{ mt: 1 }} onClick={() => setOpenBuy(false)}>
             Cancel
           </Button>
         </Box>
       </Modal>
 
       {/* MAIN VIEW */}
-      <Paper elevation={3} sx={{ p: 2 }}>
+      <Paper sx={{ p: 2 }}>
         {renderView()}
       </Paper>
     </Box>
