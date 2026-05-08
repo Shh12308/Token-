@@ -9,32 +9,36 @@ const KYCPage = () => {
   const [errorMessage, setErrorMessage] = useState('');
 
   const onSubmit = async (data) => {
-    setStatus('Uploading...');
-    setErrorMessage('');
+  setStatus('Uploading...');
+  setErrorMessage('');
 
-    try {
-      // Send data to your backend for KYC processing
-      const formData = new FormData();
-      formData.append('fullName', data.fullName);
-      formData.append('dob', data.dob);
-      formData.append('document', data.document[0]); // File upload
+  try {
+    const formData = new FormData();
 
-      const response = await axios.post('/api/kyc', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+    formData.append('fullName', data.fullName);
+    formData.append('dob', data.dob);
 
-      if (response.data.success) {
-        setStatus('KYC submitted successfully! Waiting for verification.');
-      } else {
-        setStatus('Failed to submit KYC.');
-        setErrorMessage(response.data.message || 'Unknown error.');
-      }
-    } catch (error) {
-      console.error(error);
-      setStatus('Error submitting KYC.');
-      setErrorMessage(error.response?.data?.message || error.message);
+    // IMPORTANT: match backend field names
+    formData.append('idDocument', data.idDocument[0]);
+    formData.append('proofOfAddress', data.proofOfAddress[0]);
+    formData.append('selfie', data.selfie[0]);
+
+    const response = await axios.post('/api/kyc/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    if (response.data.success) {
+      setStatus('KYC submitted successfully! Waiting for verification.');
+    } else {
+      setStatus('Failed to submit KYC.');
+      setErrorMessage(response.data.message || 'Unknown error.');
     }
-  };
+  } catch (error) {
+    console.error(error);
+    setStatus('Error submitting KYC.');
+    setErrorMessage(error.response?.data?.message || error.message);
+  }
+};
 
   return (
     <div className="kyc-page">
@@ -59,6 +63,21 @@ const KYCPage = () => {
           />
           {errors.dob && <span className="error">{errors.dob.message}</span>}
         </label>
+
+        <label>
+  ID Document
+  <input type="file" {...register('idDocument', { required: true })} />
+</label>
+
+<label>
+  Proof of Address
+  <input type="file" {...register('proofOfAddress', { required: true })} />
+</label>
+
+<label>
+  Selfie
+  <input type="file" {...register('selfie', { required: true })} />
+</label>
 
         <label>
           Government ID (Passport / Driver License)
