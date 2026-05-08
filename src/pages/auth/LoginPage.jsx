@@ -8,7 +8,7 @@ import { isBiometricAvailable } from '../../utils/device';
 // 1. Use Fallback if Env Var is missing for Local Dev
 // BUT in Production (Vercel), this MUST be set in Env Vars
 const API_BASE_URL =
-  process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+  process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
 const STORAGE_KEY = 'wallet_encrypted';
 
