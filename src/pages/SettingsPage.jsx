@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   selectUserProfile,
@@ -9,8 +9,41 @@ import {
 } from '../store/slices/walletSlice';
 import Sidebar from '../components/common/Sidebar';
 
-// src/api/config.js
+// Backend Configuration
 export const API_BASE_URL = "https://blockvault-backend-production.up.railway.app/api";
+
+// --- HELPER FOR API CALLS ---
+// Simple wrapper to handle headers and base URL
+const apiRequest = async (endpoint, method = 'GET', body = null) => {
+  try {
+    const options = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        // Add Authorization header here if you have a token:
+        // 'Authorization': `Bearer ${yourToken}`
+      },
+    };
+    if (body) {
+      options.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.statusText}`);
+    }
+    
+    // For DELETE requests, we might not get JSON back
+    if (response.status === 204) return null;
+
+    return await response.json();
+  } catch (error) {
+    console.error("Network request failed:", error);
+    alert(`Operation failed: ${error.message}`);
+    throw error;
+  }
+};
 
 // --- MODALS ---
 
@@ -24,17 +57,22 @@ const AddNetworkModal = ({ isOpen, onClose }) => {
     explorerUrl: ''
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(addCustomNetwork(formData));
-    onClose();
-    setFormData({
-      name: '',
-      rpcUrl: '',
-      chainId: '',
-      symbol: '',
-      explorerUrl: ''
-    });
+    
+    try {
+      // 1. Send to Backend
+      await apiRequest('/networks', 'POST', formData);
+      
+      // 2. Update Redux State (Optimistic or after success)
+      dispatch(addCustomNetwork(formData));
+      
+      // 3. Close and Reset
+      onClose();
+      setFormData({ name: '', rpcUrl: '', chainId: '', symbol: '', explorerUrl: '' });
+    } catch (error) {
+      // Error handling is done in apiRequest
+    }
   };
 
   if (!isOpen) return null;
@@ -81,10 +119,22 @@ const AddNetworkModal = ({ isOpen, onClose }) => {
 const RevealSeedPhraseModal = ({ isOpen, onClose }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [seedPhrase, setSeedPhrase] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // ⚠️ NEVER replace this with real seed in UI
-  const mockSeedPhrase =
-    "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+  const handleReveal = async () => {
+    setLoading(true);
+    try {
+      // Fetch seed from backend
+      const data = await apiRequest('/wallet/seed'); // Adjust endpoint as needed
+      setSeedPhrase(data.seedPhrase || data.seed || "No seed returned from backend");
+      setIsRevealed(true);
+    } catch (error) {
+      console.error("Failed to fetch seed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -101,7 +151,7 @@ const RevealSeedPhraseModal = ({ isOpen, onClose }) => {
           </p>
 
           <div className="seed-phrase-display">
-            {isRevealed ? mockSeedPhrase : '••••••••••••••••••••••••••••••••'}
+            {loading ? 'Loading...' : (isRevealed ? seedPhrase : '••••••••••••••••••••••••••••••••')}
           </div>
 
           {!isRevealed && (
@@ -121,8 +171,8 @@ const RevealSeedPhraseModal = ({ isOpen, onClose }) => {
           {!isRevealed && (
             <button
               className="button-danger"
-              disabled={!confirmed}
-              onClick={() => setIsRevealed(true)}
+              disabled={!confirmed || loading}
+              onClick={handleReveal}
             >
               Reveal
             </button>
@@ -137,19 +187,32 @@ const RevealSeedPhraseModal = ({ isOpen, onClose }) => {
 
 const ProfileSettings = () => {
   const dispatch = useDispatch();
-
-  // ✅ SAFE DEFAULT
   const userProfile = useSelector(selectUserProfile) || {
     name: '',
     email: ''
   };
 
+  // Initialize local state with Redux state
   const [formData, setFormData] = useState(userProfile);
 
-  const handleSubmit = (e) => {
+  // Sync local state if Redux state changes externally (optional)
+  useEffect(() => {
+    setFormData(userProfile);
+  }, [userProfile]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(updateUserProfile(formData));
-    alert('Profile Updated!');
+    try {
+      // 1. Send update to Backend
+      await apiRequest('/user/profile', 'PUT', formData);
+      
+      // 2. Update Redux
+      dispatch(updateUserProfile(formData));
+      
+      alert('Profile Updated!');
+    } catch (error) {
+      // Error handled in apiRequest
+    }
   };
 
   return (
@@ -175,15 +238,40 @@ const ProfileSettings = () => {
 
 const NetworksSettings = () => {
   const dispatch = useDispatch();
-
-  // ✅ CRITICAL FIX
   const customNetworks = useSelector(selectCustomNetworks) || [];
-
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleDelete = (chainId) => {
+  // Load networks on component mount
+  useEffect(() => {
+    const loadNetworks = async () => {
+      try {
+        const data = await apiRequest('/networks');
+        // Assuming your Redux slice has a setCustomNetworks or similar, 
+        // otherwise we rely on the user adding them manually for this demo.
+        // For now, we just log the fetched data since 'addCustomNetwork' adds one by one.
+        console.log("Fetched networks from backend:", data);
+        
+        // If you want to load them into Redux immediately, you would ideally dispatch a 'setNetworks' action here.
+        // If only 'addCustomNetwork' exists, you could map over them:
+        // data.forEach(net => dispatch(addCustomNetwork(net)));
+      } catch (error) {
+        console.error("Could not load networks");
+      }
+    };
+    loadNetworks();
+  }, [dispatch]);
+
+  const handleDelete = async (chainId) => {
     if (window.confirm('Delete this network?')) {
-      dispatch(deleteCustomNetwork(chainId));
+      try {
+        // 1. Delete from Backend
+        await apiRequest(`/networks/${chainId}`, 'DELETE');
+        
+        // 2. Update Redux
+        dispatch(deleteCustomNetwork(chainId));
+      } catch (error) {
+        // Error handled in apiRequest
+      }
     }
   };
 
