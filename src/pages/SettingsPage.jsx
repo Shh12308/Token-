@@ -13,16 +13,19 @@ import Sidebar from '../components/common/Sidebar';
 export const API_BASE_URL = "https://blockvault-backend-production.up.railway.app/api";
 
 // --- HELPER FOR API CALLS ---
-// Simple wrapper to handle headers and base URL
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('authToken'); // Adjust if your token key is different
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+  };
+};
+
 const apiRequest = async (endpoint, method = 'GET', body = null) => {
   try {
     const options = {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-        // Add Authorization header here if you have a token:
-        // 'Authorization': `Bearer ${yourToken}`
-      },
+      headers: getAuthHeaders(),
     };
     if (body) {
       options.body = JSON.stringify(body);
@@ -31,10 +34,11 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
     
     if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `API Error: ${response.statusText}`);
     }
     
-    // For DELETE requests, we might not get JSON back
+    // For DELETE/PUT requests, we might not get JSON back
     if (response.status === 204) return null;
 
     return await response.json();
@@ -62,16 +66,18 @@ const AddNetworkModal = ({ isOpen, onClose }) => {
     
     try {
       // 1. Send to Backend
-      await apiRequest('/networks', 'POST', formData);
+      const response = await apiRequest('/networks', 'POST', formData);
       
-      // 2. Update Redux State (Optimistic or after success)
-      dispatch(addCustomNetwork(formData));
+      // 2. Update Redux State
+      // Ensure we have the ID if the backend returns it, otherwise use the formData
+      const networkData = response.network || response; 
+      dispatch(addCustomNetwork(networkData));
       
       // 3. Close and Reset
       onClose();
       setFormData({ name: '', rpcUrl: '', chainId: '', symbol: '', explorerUrl: '' });
     } catch (error) {
-      // Error handling is done in apiRequest
+      // Error handled in apiRequest
     }
   };
 
@@ -125,9 +131,9 @@ const RevealSeedPhraseModal = ({ isOpen, onClose }) => {
   const handleReveal = async () => {
     setLoading(true);
     try {
-      // Fetch seed from backend
-      const data = await apiRequest('/wallet/seed'); // Adjust endpoint as needed
-      setSeedPhrase(data.seedPhrase || data.seed || "No seed returned from backend");
+      // Fetch seed from backend endpoint
+      const data = await apiRequest('/wallet/seed');
+      setSeedPhrase(data.seedPhrase || "No seed returned from backend");
       setIsRevealed(true);
     } catch (error) {
       console.error("Failed to fetch seed");
@@ -187,27 +193,41 @@ const RevealSeedPhraseModal = ({ isOpen, onClose }) => {
 
 const ProfileSettings = () => {
   const dispatch = useDispatch();
+  
+  // Get user profile from Redux (or default)
   const userProfile = useSelector(selectUserProfile) || {
-    name: '',
+    username: '', // Backend maps 'username' to 'name'
     email: ''
   };
 
-  // Initialize local state with Redux state
-  const [formData, setFormData] = useState(userProfile);
+  // Initialize local state. 
+  // Note: Mapping 'username' to 'name' for the input field to match the form label.
+  const [formData, setFormData] = useState({
+    name: userProfile.username || '',
+    email: userProfile.email || ''
+  });
 
-  // Sync local state if Redux state changes externally (optional)
+  // Update local state if Redux state changes (e.g. after login)
   useEffect(() => {
-    setFormData(userProfile);
+    setFormData({
+      name: userProfile.username || '',
+      email: userProfile.email || ''
+    });
   }, [userProfile]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // 1. Send update to Backend
+      // 1. Send update to Backend (Expects { name, email })
       await apiRequest('/user/profile', 'PUT', formData);
       
       // 2. Update Redux
-      dispatch(updateUserProfile(formData));
+      // We map 'name' back to 'username' for the Redux store structure
+      dispatch(updateUserProfile({
+        ...userProfile,
+        username: formData.name,
+        email: formData.email
+      }));
       
       alert('Profile Updated!');
     } catch (error) {
@@ -240,26 +260,33 @@ const NetworksSettings = () => {
   const dispatch = useDispatch();
   const customNetworks = useSelector(selectCustomNetworks) || [];
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Load networks on component mount
   useEffect(() => {
     const loadNetworks = async () => {
+      if (hasLoaded) return; // Prevent double loading
+      
       try {
         const data = await apiRequest('/networks');
-        // Assuming your Redux slice has a setCustomNetworks or similar, 
-        // otherwise we rely on the user adding them manually for this demo.
-        // For now, we just log the fetched data since 'addCustomNetwork' adds one by one.
-        console.log("Fetched networks from backend:", data);
-        
-        // If you want to load them into Redux immediately, you would ideally dispatch a 'setNetworks' action here.
-        // If only 'addCustomNetwork' exists, you could map over them:
-        // data.forEach(net => dispatch(addCustomNetwork(net)));
+        if (data && data.networks) {
+          // Hydrate Redux store
+          data.networks.forEach(net => {
+            // Avoid duplicates if Redux already has them
+            const exists = customNetworks.find(n => n.chainId === net.chainId);
+            if (!exists) {
+              dispatch(addCustomNetwork(net));
+            }
+          });
+        }
       } catch (error) {
         console.error("Could not load networks");
+      } finally {
+        setHasLoaded(true);
       }
     };
     loadNetworks();
-  }, [dispatch]);
+  }, [dispatch, hasLoaded, customNetworks]);
 
   const handleDelete = async (chainId) => {
     if (window.confirm('Delete this network?')) {
@@ -284,7 +311,7 @@ const NetworksSettings = () => {
       ) : (
         <div className="network-list-settings">
           {customNetworks.map((net) => (
-            <div key={net.chainId} className="network-item-settings">
+            <div key={net.chainId || net.id} className="network-item-settings">
               <div>
                 <h3>{net.name}</h3>
                 <p>{net.rpcUrl}</p>
