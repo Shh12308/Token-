@@ -3,19 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ethers } from 'ethers';
 
-// Import consolidated utils
-import { 
-  generateSeedPhrase, 
-  copyToClipboard, 
-  deriveKeyFromPasscode, 
-  encryptData 
+import {
+  generateSeedPhrase,
+  copyToClipboard,
+  deriveKeyFromPasscode,
+  encryptData
 } from '../../utils/wallet';
 
-// Fix URL
-const BACKEND_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
+const BACKEND_URL =
+  process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
 const ProgressBar = ({ step }) => (
-  // FIX: Added missing quotes
   <div className="progress-bar">
     <div className={`progress-step ${step >= 1 ? 'active' : ''}`}>1. Identity</div>
     <div className={`progress-step ${step >= 2 ? 'active' : ''}`}>2. Security</div>
@@ -24,15 +22,10 @@ const ProgressBar = ({ step }) => (
 );
 
 const SeedPhraseGrid = ({ phrase }) => (
-  // FIX: Added missing quotes
   <div className="seed-phrase-grid">
-    {phrase.map((word, index) => (
-      <div
-        key={index}
-        className="seed-word"
-        onClick={() => copyToClipboard(word)}
-      >
-        <span>{index + 1}. {word}</span>
+    {phrase.map((word, i) => (
+      <div key={i} className="seed-word" onClick={() => copyToClipboard(word)}>
+        {i + 1}. {word}
       </div>
     ))}
   </div>
@@ -44,36 +37,28 @@ const RegisterPage = () => {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
   const [passcode, setPasscode] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
   const [seedPhrase, setSeedPhrase] = useState([]);
-  const [confirmWords, setConfirmWords] = useState({ w1: '', w2: '' });
-  const [savedConfirmed, setSavedConfirmed] = useState(false);
+  const [confirm, setConfirm] = useState({ w1: '', w2: '' });
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Generate seed once
   useEffect(() => {
     if (step === 3 && seedPhrase.length === 0) {
-      try {
-        setSeedPhrase(generateSeedPhrase());
-      } catch (e) {
-        console.error("Seed generation error:", e);
-        setError("Failed to generate seed. Ensure you are on a secure connection (HTTPS).");
-      }
+      setSeedPhrase(generateSeedPhrase());
     }
-  }, [step, seedPhrase.length]);
+  }, [step]);
+
+  const verifySeed = () =>
+    seedPhrase[1] === confirm.w1 && seedPhrase[5] === confirm.w2;
 
   const nextStep = () => setStep((s) => Math.min(s + 1, 3));
 
-  const verifySeed = () => {
-    return seedPhrase[1] === confirmWords.w1 && seedPhrase[5] === confirmWords.w2;
-  };
-
   const handleCreateAccount = async () => {
-    if (!savedConfirmed || passcode.length < 6) return;
+    if (!saved || passcode.length < 6) return;
 
     if (!verifySeed()) {
-      setError('Seed phrase verification failed');
+      setError('Seed verification failed');
       return;
     }
 
@@ -81,75 +66,51 @@ const RegisterPage = () => {
     setError('');
 
     try {
-      const phraseString = seedPhrase.join(' ');
+      const phrase = seedPhrase.join(' ');
 
-      // 1. Derive encryption key from passcode (LOCAL)
+      // LOCAL ONLY encryption (NEVER sent to backend)
       const key = await deriveKeyFromPasscode(passcode);
+      const encrypted = await encryptData(phrase, key);
 
-      // 2. Encrypt seed locally (SECURE STORAGE)
-      const encryptedSeed = await encryptData(phraseString, key);
+      const wallet = ethers.Wallet.fromPhrase(phrase);
 
-      // 3. Create Wallet object (NON-CUSTODIAL)
-      let wallet;
-      if (ethers.Wallet.fromPhrase) {
-        wallet = ethers.Wallet.fromPhrase(phraseString);
-      } else {
-        wallet = ethers.Wallet.fromMnemonic(phraseString);
-      }
-
-      // ==========================================
-      // BACKEND INTEGRATION
-      // Sending Email + Encrypted Seed
-      // ==========================================
-      
-      // Step A: Get Nonce
-      const nonceRes = await axios.post(`${BACKEND_URL}/auth/wallet/nonce`, {
+      // NON-CUSTODIAL AUTH FLOW ONLY
+      const nonce = await axios.post(`${BACKEND_URL}/auth/wallet/nonce`, {
         walletAddress: wallet.address
       });
 
-      const { messageToSign } = nonceRes.data;
+      const message = nonce.data.messageToSign;
+      const signature = await wallet.signMessage(message);
 
-      // Step B: Sign message
-      const signature = await wallet.signMessage(messageToSign);
-
-      // Step C: Verify Signature AND Sync Wallet Data
-      // We now send: email, encryptedSeed, iv
-      const verifyRes = await axios.post(`${BACKEND_URL}/auth/wallet/verify`, {
+      const res = await axios.post(`${BACKEND_URL}/auth/wallet/verify`, {
         walletAddress: wallet.address,
         signature,
-        message: messageToSign,
-        walletType: 'created',
-        email: email, // <--- SEND EMAIL
-        encryptedSeed: encryptedSeed.data, // <--- SEND ENCRYPTED SEED
-        iv: encryptedSeed.iv // <--- SEND IV
+        message,
+        email
       });
 
-      // 4. Store Auth Token
-      const { token, user } = verifyRes.data;
-      localStorage.setItem('authToken', token);
+      localStorage.setItem('authToken', res.data.token);
 
-      // 5. Store Encrypted Wallet Data Locally (Redundant but good for offline access)
-      localStorage.setItem('wallet_data', JSON.stringify({
-        email,
-        address: wallet.address,
-        encryptedSeed: encryptedSeed.data, // Ensure we store the raw string
-        iv: encryptedSeed.iv
-      }));
-
-      localStorage.setItem('onboarded', 'true');
+      // LOCAL STORAGE ONLY (user-owned data)
+      localStorage.setItem(
+        'wallet_data',
+        JSON.stringify({
+          email,
+          address: wallet.address,
+          encryptedSeed: encrypted.data,
+          iv: encrypted.iv
+        })
+      );
 
       navigate('/');
-
     } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      setError(err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    // FIX: Added missing quotes
     <div className="signup-page">
       <div className="signup-card">
         <h2>Create Wallet</h2>
@@ -157,81 +118,74 @@ const RegisterPage = () => {
         <ProgressBar step={step} />
 
         {step === 1 && (
-          <div>
+          <>
             <input
-              placeholder="Email (Optional)"
+              placeholder="Email (optional)"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
             <button onClick={nextStep}>Continue</button>
-          </div>
+          </>
         )}
 
         {step === 2 && (
-          <div>
+          <>
             <input
               type="password"
-              placeholder="6+ digit passcode (Used to unlock locally)"
+              placeholder="6+ digit passcode"
               value={passcode}
-              maxLength={12}
-              onChange={(e) => setPasscode(e.target.value.replace(/\s/g, ''))}
+              onChange={(e) =>
+                setPasscode(e.target.value.replace(/\s/g, ''))
+              }
             />
-            <button
-              disabled={passcode.length < 6}
-              onClick={nextStep}
-            >
+            <button disabled={passcode.length < 6} onClick={nextStep}>
               Next
             </button>
-          </div>
+          </>
         )}
 
         {step === 3 && (
-          <div>
-            <h3>Save Your Seed Phrase</h3>
-            <p style={{ fontSize: '0.8rem', color: '#666' }}>
-              Never share this with anyone. We cannot recover it for you.
-            </p>
+          <>
+            <h3>Save Seed Phrase</h3>
 
             <SeedPhraseGrid phrase={seedPhrase} />
 
             <button onClick={() => copyToClipboard(seedPhrase.join(' '))}>
-              Copy Phrase
+              Copy
             </button>
-
-            <p>Verify your phrase:</p>
 
             <input
               placeholder={`Word #2 (${seedPhrase[1]})`}
               onChange={(e) =>
-                setConfirmWords({ ...confirmWords, w1: e.target.value })
+                setConfirm({ ...confirm, w1: e.target.value })
               }
             />
 
             <input
               placeholder={`Word #6 (${seedPhrase[5]})`}
               onChange={(e) =>
-                setConfirmWords({ ...confirmWords, w2: e.target.value })
+                setConfirm({ ...confirm, w2: e.target.value })
               }
             />
 
             <label>
               <input
                 type="checkbox"
-                checked={savedConfirmed}
-                onChange={(e) => setSavedConfirmed(e.target.checked)}
+                checked={saved}
+                onChange={(e) => setSaved(e.target.checked)}
               />
-              I saved my seed safely
+              I saved my seed
             </label>
 
             <button
-              disabled={!savedConfirmed || loading}
+              disabled={!saved || loading}
               onClick={handleCreateAccount}
             >
               {loading ? 'Creating...' : 'Create Wallet'}
             </button>
 
             {error && <p style={{ color: 'red' }}>{error}</p>}
-          </div>
+          </>
         )}
       </div>
     </div>
