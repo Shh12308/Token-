@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import axios from 'axios';
 
 // 🔥 CHANGE THIS TO YOUR BACKEND
-const API_BASE_URL = 'https://blockvault-backend-production.up.railway.app/api';
+const API_BASE_URL = 'https://blockvault-backend-production.up.railway.app';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
