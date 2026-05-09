@@ -7,11 +7,11 @@ const API_URL = process.env.REACT_APP_API_URL || "https://blockvault-backend-pro
 // Helper: Auth headers
 // ======================
 const authHeaders = () => {
-  const token = localStorage.getItem("token");
+  const authToken = localStorage.getItem("authToken");
 
   return {
     headers: {
-      Authorization: token ? `Bearer ${token}` : "",
+      Authorization: authToken ? `Bearer ${authToken}` : "",
     },
   };
 };
