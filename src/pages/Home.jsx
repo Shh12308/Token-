@@ -9,7 +9,7 @@ import {
   FiRefreshCw, FiEye, FiEyeOff, FiCopy, FiExternalLink
 } from 'react-icons/fi';
 
-const BACKEND_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+const BACKEND_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
 const DashboardContainer = ({ children }) => <div className="dashboard-container">{children}</div>;
 const AnimatedBackground = () => <div className="animated-background" />;
