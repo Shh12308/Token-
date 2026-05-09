@@ -9,6 +9,9 @@ import {
 } from '../store/slices/walletSlice';
 import Sidebar from '../components/common/Sidebar';
 
+// src/api/config.js
+export const API_BASE_URL = "https://blockvault-backend-production.up.railway.app/api";
+
 // --- MODALS ---
 
 const AddNetworkModal = ({ isOpen, onClose }) => {
