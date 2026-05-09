@@ -5,8 +5,6 @@ import { ethers } from 'ethers';
 import { decryptWallet } from '../../wallet/decryptWallet';
 import { isBiometricAvailable } from '../../utils/device';
 
-// 1. Use Fallback if Env Var is missing for Local Dev
-// BUT in Production (Vercel), this MUST be set in Env Vars
 const API_BASE_URL =
   process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
@@ -17,39 +15,26 @@ const getStoredWallet = () => {
   return data ? JSON.parse(data) : null;
 };
 
-// Debug: Log to confirm URL
 const requestNonce = async (walletAddress) => {
-  console.log("Fetching Nonce from:", `${API_BASE_URL}/auth/wallet/nonce`);
-  try {
-    const res = await axios.post(`${API_BASE_URL}/auth/wallet/nonce`, {
-      walletAddress
-    });
-    return res.data.messageToSign;
-  } catch (error) {
-    console.error("Nonce Error:", error);
-    throw error;
-  }
+  const res = await axios.post(`${API_BASE_URL}/auth/wallet/nonce`, {
+    walletAddress
+  });
+  return res.data.messageToSign;
 };
 
 const verifySignature = async (walletAddress, signature, message) => {
-  console.log("Verifying at:", `${API_BASE_URL}/auth/wallet/verify`);
-  try {
-    const res = await axios.post(`${API_BASE_URL}/auth/wallet/verify`, {
-      walletAddress,
-      signature,
-      message
-    });
-    return res.data;
-  } catch (error) {
-    console.error("Verify Error:", error);
-    throw error;
-  }
+  const res = await axios.post(`${API_BASE_URL}/auth/wallet/verify`, {
+    walletAddress,
+    signature,
+    message
+  });
+  return res.data;
 };
 
 const LoginPage = () => {
   const navigate = useNavigate();
 
-  const [step, setStep] = useState('select'); // select | unlock | phrase
+  const [step, setStep] = useState('select');
   const [passcode, setPasscode] = useState('');
   const [phrase, setPhrase] = useState('');
   const [loading, setLoading] = useState(false);
@@ -58,43 +43,37 @@ const LoginPage = () => {
   const storedWallet = getStoredWallet();
 
   // -----------------------------
-  // WALLET SIGN-IN CORE LOGIC
+  // CORE LOGIN (NON-CUSTODIAL SAFE)
   // -----------------------------
   const loginWithWallet = async (privateKey) => {
     try {
       const wallet = new ethers.Wallet(privateKey);
+
       const message = await requestNonce(wallet.address);
       const signature = await wallet.signMessage(message);
-      const result = await verifySignature(
-        wallet.address,
-        signature,
-        message
-      );
+
+      const result = await verifySignature(wallet.address, signature, message);
 
       if (result.token) {
         localStorage.setItem('authToken', result.token);
         localStorage.setItem('user', JSON.stringify(result.user));
-        // Ensure this path matches your App.js
-        navigate('/app/dashboard'); 
+
+        navigate('/app/dashboard');
       } else {
-        throw new Error("No token returned from backend");
+        throw new Error('No token returned');
       }
     } catch (err) {
-      console.error("Login Failed:", err);
-      if (err.code === 'ERR_NETWORK') {
-        setError("Cannot connect to Backend. Check API URL in Settings.");
-      } else {
-        setError("Login failed. Please try again.");
-      }
+      console.error(err);
+      setError('Login failed. Try again.');
     }
   };
 
   // -----------------------------
-  // PASSCODE LOGIN (LOCAL UNLOCK)
+  // PASSCODE LOGIN
   // -----------------------------
   const handlePasscodeLogin = async () => {
     if (!storedWallet) {
-      setError('No wallet found. Please create one.');
+      setError('No wallet found.');
       return;
     }
 
@@ -107,16 +86,17 @@ const LoginPage = () => {
         passcode,
         storedWallet.iv
       );
+
       await loginWithWallet(decrypted.privateKey);
-    } catch (err) {
-      setError('Invalid passcode or failed to decrypt wallet.');
+    } catch {
+      setError('Invalid passcode.');
     } finally {
       setLoading(false);
     }
   };
 
   // -----------------------------
-  // SEED PHRASE LOGIN (IMPORT)
+  // SEED PHRASE LOGIN
   // -----------------------------
   const handlePhraseLogin = async () => {
     if (!phrase || phrase.trim().split(/\s+/).length < 12) {
@@ -130,7 +110,7 @@ const LoginPage = () => {
     try {
       const wallet = ethers.Wallet.fromPhrase(phrase.trim());
       await loginWithWallet(wallet.privateKey);
-    } catch (err) {
+    } catch {
       setError('Invalid seed phrase');
       setLoading(false);
     }
@@ -140,15 +120,8 @@ const LoginPage = () => {
   // BIOMETRIC LOGIN
   // -----------------------------
   const handleBiometricLogin = async () => {
-    if (!storedWallet) {
-      setError('No wallet found');
-      return;
-    }
-
-    if (!isBiometricAvailable()) {
-      setError('Biometrics not available');
-      return;
-    }
+    if (!storedWallet) return setError('No wallet found');
+    if (!isBiometricAvailable()) return setError('Biometric not available');
 
     setLoading(true);
 
@@ -158,9 +131,10 @@ const LoginPage = () => {
         'biometric-unlock',
         storedWallet.iv
       );
+
       await loginWithWallet(decrypted.privateKey);
-    } catch (err) {
-      setError('Biometric authentication failed');
+    } catch {
+      setError('Biometric failed');
       setLoading(false);
     }
   };
@@ -180,13 +154,8 @@ const LoginPage = () => {
             </button>
           )}
 
-          <button onClick={() => setStep('passcode')}>
-            🔐 Passcode
-          </button>
-
-          <button onClick={() => setStep('phrase')}>
-            🔑 Seed Phrase
-          </button>
+          <button onClick={() => setStep('passcode')}>🔐 Passcode</button>
+          <button onClick={() => setStep('phrase')}>🔑 Seed Phrase</button>
 
           {error && <p style={{ color: 'red' }}>{error}</p>}
         </div>
@@ -194,9 +163,6 @@ const LoginPage = () => {
     );
   }
 
-  // -----------------------------
-  // PASSCODE UI
-  // -----------------------------
   if (step === 'passcode') {
     return (
       <div className="login-page">
@@ -207,33 +173,21 @@ const LoginPage = () => {
             type="password"
             maxLength={12}
             value={passcode}
-            onChange={(e) => 
-              // FIX: Changed /\D/g to /\s/g to remove spaces, keep digits
-              setPasscode(e.target.value.replace(/\s/g, ''))
-            }
+            onChange={(e) => setPasscode(e.target.value.replace(/\s/g, ''))}
             placeholder="Passcode"
           />
 
-          <button
-            onClick={handlePasscodeLogin}
-            disabled={loading}
-          >
-            {loading ? 'Unlocking...' : 'Unlock Wallet'}
+          <button onClick={handlePasscodeLogin} disabled={loading}>
+            {loading ? 'Unlocking...' : 'Unlock'}
           </button>
 
-          <button onClick={() => setStep('select')}>
-            Back
-          </button>
-
+          <button onClick={() => setStep('select')}>Back</button>
           {error && <p style={{ color: 'red' }}>{error}</p>}
         </div>
       </div>
     );
   }
 
-  // -----------------------------
-  // SEED PHRASE UI
-  // -----------------------------
   if (step === 'phrase') {
     return (
       <div className="login-page">
@@ -243,22 +197,15 @@ const LoginPage = () => {
           <textarea
             value={phrase}
             onChange={(e) => setPhrase(e.target.value)}
-            placeholder="Enter 12 or 24 word seed phrase"
+            placeholder="12 or 24 word seed phrase"
             rows={4}
-            style={{width: '100%'}}
           />
 
-          <button
-            onClick={handlePhraseLogin}
-            disabled={loading}
-          >
+          <button onClick={handlePhraseLogin} disabled={loading}>
             {loading ? 'Verifying...' : 'Login'}
           </button>
 
-          <button onClick={() => setStep('select')}>
-            Back
-          </button>
-
+          <button onClick={() => setStep('select')}>Back</button>
           {error && <p style={{ color: 'red' }}>{error}</p>}
         </div>
       </div>
