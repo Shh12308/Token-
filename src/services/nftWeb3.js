@@ -1,4 +1,9 @@
-import { ethers } from "ethers";
+import {
+  BrowserProvider,
+  JsonRpcProvider,
+  formatEther,
+  parseEther
+} from "ethers";
 import { NFT_ABI, MARKETPLACE_ABI, NFT_ADDRESS, MARKETPLACE_ADDRESS, RPC_URL } from "../utils/contracts";
 
 // 1. Setup Provider (Connection to OXT Chain)
