@@ -38,7 +38,7 @@ const AppRoutes = () => {
         <Route path="/swap" element={<SwapPage />} />
         <Route path="/coinprice" element={<CoinPricePage />} />
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/security" element={<Security />} />
+        
         <Route path="/profile" element={<Profile />} />
         
         {/* --- AUTH PAGES --- */}
