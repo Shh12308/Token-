@@ -35,7 +35,7 @@ const Wallet = () => {
   const [provider, setProvider] = useState('moonpay'); // Default provider
 
   // 🔌 REAL BACKEND CONNECTIONS
-  const { data: balances, isLoading: isLoadingBalances, error: balancesError } = useGetBalancesQuery();
+  const { data: balances, isLoading, error: balancesError } = useGetBalancesQuery();
   const { data: user } = useGetUserQuery();
   
   // We use the mutation hook here if available, otherwise we fall back to fetch below
@@ -76,11 +76,12 @@ const Wallet = () => {
     try {
       // 3. Direct API Call to Backend
       // NOTE: We use fetch here to ensure absolute control over headers for debugging.
+      // If you switch back to RTK, ensure baseQuery includes the header.
       const response = await fetch('https://blockvault-backend-production.up.railway.app/api/buy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // <--- CRITICAL: This fixes 401
+          'Authorization': `Bearer ${token}` // <-- CRITICAL: This fixes 401
         },
         body: JSON.stringify({
           amount: Number(fiatAmount),
@@ -128,10 +129,10 @@ const Wallet = () => {
 
       {/* BALANCES */}
       <Paper sx={{ p: 2, mb: 2 }}>
-        {isLoadingBalances && <p>Loading balances...</p>}
-        {balancesError && <p style={{ color: 'red' }}>API Error: {balancesError.message}</p>}
+        {isLoading && <p>Loading balances...</p>}
+        {balancesError && <p style={{ color: 'red' }}>API Error</p>}
 
-        {!isLoadingBalances && !balancesError && (
+        {!isLoading && !balancesError && (
           <div>
             <p>ETH: {balances?.eth ?? 0}</p>
             <p>USDC: {balances?.usdc ?? 0}</p>
