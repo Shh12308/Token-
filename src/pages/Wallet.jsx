@@ -67,7 +67,7 @@ const Wallet = () => {
     }
 
     // 2. Get Auth Token
-    const token = localStorage.getItem('authToken');
+    const authToken = localStorage.getItem('authToken');
     if (!token) {
       alert("You are not logged in. Please login again.");
       // Redirect to login if needed
