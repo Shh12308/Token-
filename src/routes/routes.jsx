@@ -11,7 +11,7 @@ import SendPage from '../pages/SendPage';
 import Search from '../pages/Search';
 import NFTBrowsePage from '../pages/NFTBrowsePage';
 import SwapPage from '../pages/SwapPage';
-import Security from '../pages/Security';
+import SettingsPage from '../pages/SettingsPage';
 import CoinPricePage from '../pages/CoinPricePage';
 
 import Profile from '../pages/Profile';
