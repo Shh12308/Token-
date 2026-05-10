@@ -52,30 +52,60 @@ const Wallet = () => {
     ? (parseFloat(fiatAmount) / currentRate).toFixed(6) 
     : '0.000000';
 
+  // ... inside Wallet.js component ...
+
   const handleBuy = async () => {
+    // 1. Validation
     if (!fiatAmount || Number(fiatAmount) < 20) {
       alert('Minimum buy is $20');
       return;
     }
 
     if (!walletAddress) {
-      alert('Wallet not connected');
+      alert('Wallet not connected. Please log in.');
+      return;
+    }
+
+    // 2. Get Auth Token
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      alert("You are not logged in. Please login again.");
+      // Redirect to login if needed
       return;
     }
 
     try {
-      const res = await createBuySession({
-        amount: Number(fiatAmount),
-        currency: cryptoCurrency,
-        walletAddress,
-        provider, // Pass selected provider to backend
-      }).unwrap();
+      // 3. Direct API Call to Backend
+      const response = await fetch('https://blockvault-backend-production.up.railway.app/api/buy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // <-- CRITICAL: This fixes the 401
+        },
+        body: JSON.stringify({
+          amount: Number(fiatAmount),
+          currency: cryptoCurrency,
+          walletAddress, // Backend uses this if provided, otherwise falls back to user.walletAddress
+          provider, 
+        })
+      });
 
-      // Redirect to provider (Non-custodial: Funds go directly to walletAddress)
-      window.location.href = res.url;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to initiate buy session');
+      }
+
+      // 4. Redirect to Provider (MoonPay/Transak/Wyre)
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert('No redirect URL returned from server');
+      }
+
     } catch (err) {
       console.error(err);
-      alert('Buy failed');
+      alert(`Buy failed: ${err.message}`);
     }
   };
 
