@@ -18,6 +18,7 @@ import SendView from '../components/wallet/SendView';
 import ReceiveView from '../components/wallet/ReceiveView';
 import SwapView from '../components/wallet/SwapView';
 
+// Redux Hooks
 import {
   useGetBalancesQuery,
   useGetUserQuery,
@@ -34,10 +35,11 @@ const Wallet = () => {
   const [provider, setProvider] = useState('moonpay'); // Default provider
 
   // 🔌 REAL BACKEND CONNECTIONS
-  const { data: balances, isLoading, error } = useGetBalancesQuery();
+  const { data: balances, isLoading: isLoadingBalances, error: balancesError } = useGetBalancesQuery();
   const { data: user } = useGetUserQuery();
-  const [createBuySession, { isLoading: buying }] =
-    useCreateBuySessionMutation();
+  
+  // We use the mutation hook here if available, otherwise we fall back to fetch below
+  const [createBuySession, { isLoading: buying }] = useCreateBuySessionMutation();
 
   const walletAddress = user?.walletAddress;
 
@@ -51,8 +53,6 @@ const Wallet = () => {
   const estimatedCrypto = fiatAmount 
     ? (parseFloat(fiatAmount) / currentRate).toFixed(6) 
     : '0.000000';
-
-  // ... inside Wallet.js component ...
 
   const handleBuy = async () => {
     // 1. Validation
@@ -70,22 +70,22 @@ const Wallet = () => {
     const token = localStorage.getItem('authToken');
     if (!token) {
       alert("You are not logged in. Please login again.");
-      // Redirect to login if needed
       return;
     }
 
     try {
       // 3. Direct API Call to Backend
+      // NOTE: We use fetch here to ensure absolute control over headers for debugging.
       const response = await fetch('https://blockvault-backend-production.up.railway.app/api/buy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // <-- CRITICAL: This fixes the 401
+          'Authorization': `Bearer ${token}` // <--- CRITICAL: This fixes 401
         },
         body: JSON.stringify({
           amount: Number(fiatAmount),
           currency: cryptoCurrency,
-          walletAddress, // Backend uses this if provided, otherwise falls back to user.walletAddress
+          walletAddress, 
           provider, 
         })
       });
@@ -128,10 +128,10 @@ const Wallet = () => {
 
       {/* BALANCES */}
       <Paper sx={{ p: 2, mb: 2 }}>
-        {isLoading && <p>Loading balances...</p>}
-        {error && <p style={{ color: 'red' }}>API Error</p>}
+        {isLoadingBalances && <p>Loading balances...</p>}
+        {balancesError && <p style={{ color: 'red' }}>API Error: {balancesError.message}</p>}
 
-        {!isLoading && !error && (
+        {!isLoadingBalances && !balancesError && (
           <div>
             <p>ETH: {balances?.eth ?? 0}</p>
             <p>USDC: {balances?.usdc ?? 0}</p>
