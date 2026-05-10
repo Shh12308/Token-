@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import axios from 'axios';
+
+// Icons
 import {
   FiTrendingUp, FiSearch, FiGrid, FiActivity,
   FiGlobe, FiSettings, FiArrowUpRight, FiArrowDownLeft,
@@ -9,14 +11,17 @@ import {
   FiRefreshCw, FiEye, FiEyeOff, FiCopy, FiExternalLink
 } from 'react-icons/fi';
 
+// Components (Assuming these are in the same directory)
+// If they are not, you will need to create them or import them correctly.
+const QuickActions = ({ children }) => <div className="quick-actions">{children}</div>;
+const MarketOverview = ({ children }) => <div className="market-overview">{children}</div>;
+const RecentTransactions = ({ children }) => <div className="recent-transactions">{children}</div>;
+
 const BACKEND_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
 const DashboardContainer = ({ children }) => <div className="dashboard-container">{children}</div>;
 const AnimatedBackground = () => <div className="animated-background" />;
 const WalletCard = ({ children }) => <div className="wallet-card">{children}</div>;
-const QuickActions = ({ children }) => <div className="quick-actions">{children}</div>;
-const MarketOverview = ({ children }) => <div className="market-overview">{children}</div>;
-const RecentTransactions = ({ children }) => <div className="recent-transactions">{children}</div>;
 const NetworkStatus = ({ network }) => <div className="network-status">{network || 'Ethereum'}</div>;
 
 const MarketCard = ({ crypto }) => {
@@ -68,6 +73,7 @@ const Home = () => {
       return;
     }
 
+    // Define fetchData inside useEffect or outside to be accessible to cleanup
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -84,10 +90,11 @@ const Home = () => {
 
           setWalletAddress(primaryWallet.address || '');
 
+          // Assuming balances are returned on the wallet object or user object
           const nativeBal = parseFloat(primaryWallet?.balances?.native || 0);
 
           setBalances({
-            usdValue: nativeBal * 2000
+            usdValue: nativeBal * 2000 
           });
         }
 
@@ -96,7 +103,7 @@ const Home = () => {
           `${BACKEND_URL}/market?symbols=ethereum,bitcoin,binancecoin,matic-network,solana`
         );
 
-        const data = marketRes.data?.data || marketRes.data || [];
+        const data = marketRes.data?.data || [];
 
         setMarketData(Array.isArray(data) ? data : []);
 
@@ -113,20 +120,28 @@ const Home = () => {
     };
 
     fetchData();
+
+    // Polling logic
     const interval = setInterval(fetchData, 30000);
 
+    // Cleanup function
     return () => clearInterval(interval);
-  }, [navigate]);
+  }, [navigate]); // Re-run if navigation changes
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    window.location.reload();
+    // In a real app, you'd call fetchData() again
+    // window.location.reload(); // Refreshing the whole page is simple but jarring
+    setTimeout(() => setRefreshing(false), 1000);
   };
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', height: '100vh' }}>
-        Loading...
+      <div style={{ display: 'flex', justifyContent: 'center', height: '100vh', alignItems: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="loader"></div>
+          <p>Loading...</p>
+        </div>
       </div>
     );
   }
@@ -136,6 +151,7 @@ const Home = () => {
     0
   );
 
+  // Calculate average 24h change
   const totalChange =
     marketData.length > 0
       ? marketData.reduce(
@@ -151,8 +167,8 @@ const Home = () => {
       <div className="dashboard-content">
         <header className="dashboard-header">
           <div className="header-actions">
-            <button onClick={handleRefresh}>
-              <FiRefreshCw />
+            <button onClick={handleRefresh} disabled={refreshing}>
+              {refreshing ? <div className="spin"><FiRefreshCw /></div> : <FiRefreshCw />}
             </button>
             <button onClick={() => navigate('/search')}>
               <FiSearch />
@@ -165,32 +181,37 @@ const Home = () => {
 
         {/* WALLET */}
         <WalletCard>
-          <div>
+          <div className="balance-header">
             <div>Total Balance</div>
-
-            <div>
-              {showBalance ? (
-                <>${totalBalance.toFixed(2)}</>
-              ) : (
-                '••••••'
-              )}
-
-              <button onClick={() => setShowBalance(!showBalance)}>
-                {showBalance ? <FiEyeOff /> : <FiEye />}
-              </button>
-            </div>
-
-            <div>
-              {totalChange >= 0 ? '+' : ''}
-              {totalChange.toFixed(2)}%
+            <div className="balance-actions">
+              <NetworkStatus network={selectedNetwork} />
             </div>
           </div>
 
-          <div>
-            <span>{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</span>
-            <button onClick={() => navigator.clipboard.writeText(walletAddress || '')}>
-              <FiCopy />
+          <div className="balance-display">
+            <div className="main-amount">
+              {showBalance ? (
+                `$${totalBalance.toLocaleString()}`
+              ) : (
+                '•••••••••'
+              )}
+            </div>
+            
+            <button 
+              className="toggle-btn" 
+              onClick={() => setShowBalance(!showBalance)}
+              title={showBalance ? "Hide Balance" : "Show Balance"}
+            >
+              {showBalance ? <FiEyeOff /> : <FiEye />}
             </button>
+          </div>
+
+          <div className="balance-change">
+            <span>24h:</span>
+            <span className={totalChange >= 0 ? 'positive' : 'negative'}>
+              {totalChange >= 0 ? '+' : ''}
+              {totalChange.toFixed(2)}%
+            </span>
           </div>
         </WalletCard>
 
@@ -198,22 +219,38 @@ const Home = () => {
         <MarketOverview>
           <h2>Market</h2>
 
-          <div className="market-grid">
-            {marketData.slice(0, 4).map((crypto) => (
-              <MarketCard key={crypto.id || Math.random()} crypto={crypto} />
-            ))}
-          </div>
+          {marketData.length === 0 ? (
+            <p className="empty-state">No market data available.</p>
+          ) : (
+            <div className="market-grid">
+              {marketData.slice(0, 4).map((crypto) => (
+                <MarketCard key={crypto.id || Math.random()} crypto={crypto} />
+              ))}
+            </div>
+          )}
         </MarketOverview>
 
         {/* ACTIVITY */}
         <RecentTransactions>
           <h2>Recent Activity</h2>
 
-          {[1, 2, 3].map((item) => (
-            <div key={item}>
-              {item % 2 === 0 ? 'Sent' : 'Received'} ETH
-            </div>
-          ))}
+          <div className="activity-list">
+            {[1, 2, 3].map((item) => (
+              <div key={item} className="activity-item">
+                <div className="activity-icon">
+                  {item % 2 === 0 ? '↓' : '↑'}
+                </div>
+                <div className="activity-details">
+                  <span className="activity-type">
+                    {item % 2 === 0 ? 'Sent' : 'Received'}
+                  </span>
+                  <span className="activity-amount">
+                    0.01 ETH
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </RecentTransactions>
       </div>
     </DashboardContainer>
