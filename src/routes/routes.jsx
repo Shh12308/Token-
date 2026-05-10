@@ -2,25 +2,25 @@ import React from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 
-// Pages
+// --- PAGES ---
 import Home from '../pages/Home';
 import KYCPage from '../pages/KYCPage';
-import Wallet from '../pages/Wallet';
-import SettingsPage from '../pages/SettingsPage';
-import CryptoSticks from '../pages/CryptoSticks';
+import BuyPage from '../pages/BuyPage';
+import ReceivePage from '../pages/ReceivePage';
+import SendPage from '../pages/SendPage';
 import Search from '../pages/Search';
-import NftMarketplace from '../pages/NftMarketplace';
-import Activity from '../pages/Activity';
+import NFTBrowsePage from '../pages/NFTBrowsePage';
+import SwapPage from '../pages/SwapPage';
 import Security from '../pages/Security';
 import CoinPricePage from '../pages/CoinPricePage';
 
 import Profile from '../pages/Profile';
 
-// Auth
+// --- AUTH ---
 import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
 
-// 404 page
+// --- 404 PAGE ---
 import NotFound from '../pages/NotFound';
 
 const AppRoutes = () => {
@@ -31,15 +31,17 @@ const AppRoutes = () => {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Home />} />
         <Route path="/kyc" element={<KYCPage />} />
-        <Route path="/wallet" element={<Wallet />} />
-        <Route path="/crypto-sticks" element={<CryptoSticks />} />
-        <Route path="/search" element={<Search />} />
-        <Route path="/nft" element={<NftMarketplace />} />
-        <Route path="/activity" element={<Activity />} />
+        <Route path="/buy" element={<BuyPage />} />
+        <Route path="/send" element={<SendPage />} />
+        <Route path="/search" element={<ReceivePage />} />
+        <Route path="/nft" element={<NFTBrowsePage />} />
+        <Route path="/swap" element={<SwapPage />} />
         <Route path="/coinprice" element={<CoinPricePage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/security" element={<Security />} />
         <Route path="/profile" element={<Profile />} />
+        
+        {/* --- AUTH PAGES --- */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
 
