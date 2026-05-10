@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import Sidebar from '../components/common/Sidebar';
+
+// Redux Actions & Selectors
+// Ensure these are defined in your ../store/slices/walletSlice.js
 import {
   selectUserProfile,
   selectCustomNetworks,
@@ -7,14 +11,13 @@ import {
   addCustomNetwork,
   deleteCustomNetwork,
 } from '../store/slices/walletSlice';
-import Sidebar from '../components/common/Sidebar';
 
 // Backend Configuration
 export const API_BASE_URL = "https://blockvault-backend-production.up.railway.app/api";
 
 // --- HELPER FOR API CALLS ---
 const getAuthHeaders = () => {
-  const token = localStorage.getItem('authToken'); // Adjust if your token key is different
+  const token = localStorage.getItem('authToken'); 
   return {
     'Content-Type': 'application/json',
     ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -27,6 +30,7 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
       method,
       headers: getAuthHeaders(),
     };
+
     if (body) {
       options.body = JSON.stringify(body);
     }
@@ -38,13 +42,14 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
       throw new Error(errorData.message || `API Error: ${response.statusText}`);
     }
     
-    // For DELETE/PUT requests, we might not get JSON back
+    // For DELETE/PUT requests, we might not get JSON back (e.g., 204 No Content)
     if (response.status === 204) return null;
 
     return await response.json();
   } catch (error) {
     console.error("Network request failed:", error);
-    alert(`Operation failed: ${error.message}`);
+    // Using a simple alert here, but in a production app you might use a Toast/Snackbar
+    // alert(`Operation failed: ${error.message}`); 
     throw error;
   }
 };
@@ -69,7 +74,7 @@ const AddNetworkModal = ({ isOpen, onClose }) => {
       const response = await apiRequest('/networks', 'POST', formData);
       
       // 2. Update Redux State
-      // Ensure we have the ID if the backend returns it, otherwise use the formData
+      // The backend returns { network: { ... } }
       const networkData = response.network || response; 
       dispatch(addCustomNetwork(networkData));
       
@@ -77,7 +82,8 @@ const AddNetworkModal = ({ isOpen, onClose }) => {
       onClose();
       setFormData({ name: '', rpcUrl: '', chainId: '', symbol: '', explorerUrl: '' });
     } catch (error) {
-      // Error handled in apiRequest
+      // Error is handled in apiRequest (console log)
+      alert(`Failed to add network: ${error.message}`);
     }
   };
 
@@ -86,26 +92,36 @@ const AddNetworkModal = ({ isOpen, onClose }) => {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal add-network-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header"><h3>Add Custom Network</h3></div>
+        <div className="modal-header">
+          <h3>Add Custom Network</h3>
+        </div>
 
         <form id="add-network-form" className="modal-body" onSubmit={handleSubmit}>
-          <input required placeholder="Network Name"
+          <input 
+            required 
+            placeholder="Network Name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           />
-          <input required placeholder="RPC URL"
+          <input 
+            required 
+            placeholder="RPC URL"
             value={formData.rpcUrl}
             onChange={(e) => setFormData({ ...formData, rpcUrl: e.target.value })}
           />
-          <input required placeholder="Chain ID"
+          <input 
+            required 
+            placeholder="Chain ID"
             value={formData.chainId}
             onChange={(e) => setFormData({ ...formData, chainId: e.target.value })}
           />
-          <input placeholder="Symbol"
+          <input 
+            placeholder="Symbol"
             value={formData.symbol}
             onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
           />
-          <input placeholder="Explorer URL"
+          <input 
+            placeholder="Explorer URL"
             value={formData.explorerUrl}
             onChange={(e) => setFormData({ ...formData, explorerUrl: e.target.value })}
           />
@@ -137,6 +153,7 @@ const RevealSeedPhraseModal = ({ isOpen, onClose }) => {
       setIsRevealed(true);
     } catch (error) {
       console.error("Failed to fetch seed");
+      alert("Could not retrieve seed phrase.");
     } finally {
       setLoading(false);
     }
@@ -153,7 +170,7 @@ const RevealSeedPhraseModal = ({ isOpen, onClose }) => {
 
         <div className="modal-body">
           <p className="warning-text">
-            This phrase is the ONLY way to recover your wallet. Do not share it.
+            This phrase is the ONLY way to recover your wallet. Do not share it with anyone.
           </p>
 
           <div className="seed-phrase-display">
@@ -194,20 +211,20 @@ const RevealSeedPhraseModal = ({ isOpen, onClose }) => {
 const ProfileSettings = () => {
   const dispatch = useDispatch();
   
-  // Get user profile from Redux (or default)
+  // Get user profile from Redux
   const userProfile = useSelector(selectUserProfile) || {
-    username: '', // Backend maps 'username' to 'name'
+    username: '',
     email: ''
   };
 
   // Initialize local state. 
-  // Note: Mapping 'username' to 'name' for the input field to match the form label.
+  // We map 'username' (Redux) to 'name' (Form Label) for clarity
   const [formData, setFormData] = useState({
     name: userProfile.username || '',
     email: userProfile.email || ''
   });
 
-  // Update local state if Redux state changes (e.g. after login)
+  // Sync local state with Redux state (e.g., if data changes from another tab)
   useEffect(() => {
     setFormData({
       name: userProfile.username || '',
@@ -218,11 +235,11 @@ const ProfileSettings = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // 1. Send update to Backend (Expects { name, email })
+      // 1. Send update to Backend (Expects { name, email, ... })
       await apiRequest('/user/profile', 'PUT', formData);
       
       // 2. Update Redux
-      // We map 'name' back to 'username' for the Redux store structure
+      // We map 'name' back to 'username' to match the Redux store structure
       dispatch(updateUserProfile({
         ...userProfile,
         username: formData.name,
@@ -231,7 +248,7 @@ const ProfileSettings = () => {
       
       alert('Profile Updated!');
     } catch (error) {
-      // Error handled in apiRequest
+      console.error("Update failed:", error);
     }
   };
 
@@ -270,9 +287,9 @@ const NetworksSettings = () => {
       try {
         const data = await apiRequest('/networks');
         if (data && data.networks) {
-          // Hydrate Redux store
+          // Hydrate Redux store with backend data
           data.networks.forEach(net => {
-            // Avoid duplicates if Redux already has them
+            // Avoid duplicates if Redux already has them (based on chainId)
             const exists = customNetworks.find(n => n.chainId === net.chainId);
             if (!exists) {
               dispatch(addCustomNetwork(net));
@@ -289,7 +306,7 @@ const NetworksSettings = () => {
   }, [dispatch, hasLoaded, customNetworks]);
 
   const handleDelete = async (chainId) => {
-    if (window.confirm('Delete this network?')) {
+    if (window.confirm('Are you sure you want to delete this network?')) {
       try {
         // 1. Delete from Backend
         await apiRequest(`/networks/${chainId}`, 'DELETE');
@@ -297,7 +314,7 @@ const NetworksSettings = () => {
         // 2. Update Redux
         dispatch(deleteCustomNetwork(chainId));
       } catch (error) {
-        // Error handled in apiRequest
+        alert("Failed to delete network");
       }
     }
   };
@@ -327,7 +344,9 @@ const NetworksSettings = () => {
         </div>
       )}
 
-      <button onClick={() => setIsModalOpen(true)}>+ Add Network</button>
+      <button className="button-secondary" onClick={() => setIsModalOpen(true)}>
+        + Add Network
+      </button>
 
       <AddNetworkModal
         isOpen={isModalOpen}
@@ -344,7 +363,7 @@ const SecuritySettings = () => {
     <div className="settings-section">
       <h2>Security</h2>
 
-      <button onClick={() => setOpen(true)}>
+      <button className="button-secondary" onClick={() => setOpen(true)}>
         Reveal Seed Phrase
       </button>
 
