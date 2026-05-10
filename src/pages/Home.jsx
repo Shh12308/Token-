@@ -1,253 +1,251 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { 
+  faWallet, faGlobe, faArrowUp, faArrowDown, faRepeat, 
+  faPlus, faGear, faBell, faChevronDown 
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-// Icons (Make sure these are installed)
-import {
-  FiTrendingUp, FiSearch, FiGrid, FiActivity,
-  FiGlobe, FiSettings, FiArrowUpRight, FiArrowDownLeft,
-  FiClock, FiZap, FiShield, FiChevronRight,
-  FiRefreshCw, FiEye, FiEyeOff, FiCopy, FiExternalLink
-} from 'react-icons/fi';
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
-// Components
-// Assuming these files exist in your project
-import QuickActions from '../components/wallet/QuickActionsView'; 
-import SendView from '../components/wallet/SendView';
-import ReceiveView from '../components/wallet/ReceiveView';
-import SwapView from '../components/wallet/SwapView';
-
-const BACKEND_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
-
-const DashboardContainer = ({ children }) => <div className="dashboard-container">{children}</div>;
-const AnimatedBackground = () => <div className="animated-background" />;
-const WalletCard = ({ children }) => <div className="wallet-card">{children}</div>;
-const NetworkStatus = ({ network }) => <div className="network-status">{network || 'Ethereum'}</div>;
-
-// --- HELPER: GET AUTH HEADERS ---
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('authToken');
-  const headers = { 'Content-Type': 'application/json' };
-  
-  // FIX: Check if token exists before adding Authorization header
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  return headers;
-};
-
-// --- HELPER: MARKET CARD COMPONENT ---
-const MarketCard = ({ crypto }) => {
-  if (!crypto) return null;
-
-  return (
-    <motion.div className="market-card">
-      <div className="market-header">
-        <img src={crypto.image || ''} alt={crypto.name || ''} className="crypto-icon" />
-        <div className="crypto-info">
-          <span className="crypto-name">{crypto.name || 'Unknown'}</span>
-          <span className="crypto-symbol">
-            {crypto.symbol?.toUpperCase() || ''}
-          </span>
-        </div>
-      </div>
-      <div className="market-price">
-        <span className="price">
-          ${crypto.current_price?.toLocaleString() || '0.00'}
-        </span>
-        <span className={`change ${crypto.price_change_percentage_24h >= 0 ? 'positive' : 'negative'}`}>
-          {crypto.price_change_percentage_24h >= 0 ? '+' : ''}
-          {crypto.price_change_percentage_24h?.toFixed(2) || '0.00'}%
-        </span>
-      </div>
-    </motion.div>
-  );
-};
-
-const Home = () => {
+const Dashboard = () => {
   const navigate = useNavigate();
 
-  const [balances, setBalances] = useState({});
-  const [marketData, setMarketData] = useState([]);
-  const [selectedNetwork] = useState('ethereum');
-  const [walletAddress, setWalletAddress] = useState('');
-  const [showBalance, setShowBalance] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  // State
   const [loading, setLoading] = useState(true);
+  const [balances, setBalances] = useState([]);
+  const [marketData, setMarketData] = useState({});
+  const [totalBalance, setTotalBalance] = useState(0);
+  const [isBalanceHidden, setIsBalanceHidden] = useState(false);
 
+  // Fetch Data on Mount
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
+    fetchDashboardData();
+  }, []);
 
-    if (!token) {
-      navigate('/auth/login');
-      return;
+  const fetchDashboardData = async () => {
+    try {
+      // 1. Get User Balances
+      const res = await axios.get(`${API_BASE}/balances`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+      });
+      
+      // 2. Get Market Data (for fiat value)
+      const marketRes = await axios.get(`${API_BASE}/market?symbols=ethereum,bitcoin,polygon-pos`);
+      const prices = marketRes.data.data;
+
+      // Create a price map for easy lookup
+      const priceMap = prices.reduce((acc, curr) => {
+        acc[curr.symbol.toUpperCase()] = curr.current_price;
+        return acc;
+      }, {});
+
+      setMarketData(priceMap);
+
+      // 3. Process Assets for UI
+      // Backend returns: { eth: "0.5", usdc: "100.0" }
+      const assets = [
+        {
+          symbol: 'ETH',
+          name: 'Ethereum',
+          balance: res.data.eth || 0,
+          price: priceMap['ETH'] || 2800,
+          change: 2.4,
+          icon: 'fa-brands fa-ethereum' // Use FontAwesome Brand
+        },
+        {
+          symbol: 'USDC',
+          name: 'USD Coin',
+          balance: res.data.usdc || 0,
+          price: 1.00,
+          change: 0.01,
+          icon: 'fa-solid fa-circle-dollar-to-slot'
+        },
+        {
+          symbol: 'BTC',
+          name: 'Bitcoin',
+          balance: 0.005, // Mock or fetch from backend if available
+          price: priceMap['BTC'] || 45000,
+          change: 1.2,
+          icon: 'fa-brands fa-bitcoin'
+        }
+      ];
+
+      setBalances(assets);
+
+      // Calculate Total Fiat Value
+      const total = assets.reduce((acc, asset) => {
+        return acc + (asset.balance * asset.price);
+      }, 0);
+
+      setTotalBalance(total);
+
+    } catch (err) {
+      console.error("Dashboard Error:", err);
+      // If backend fails, maybe redirect to login if 401
+      if(err.response?.status === 401) navigate('/login');
+    } finally {
+      setLoading(false);
     }
-
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-
-        // WALLET
-        // FIX: Use getAuthHeaders helper
-        const walletRes = await axios.get(`${BACKEND_URL}/wallets`, {
-          headers: getAuthHeaders(), // <-- CRITICAL FIX FOR 401
-        });
-
-        const wallets = walletRes.data?.wallets || [];
-
-        if (wallets.length > 0) {
-          const primaryWallet = wallets[0];
-          setWalletAddress(primaryWallet.address || '');
-          const nativeBal = parseFloat(primaryWallet?.balances?.native || 0);
-
-          setBalances({
-            usdValue: nativeBal * 2000 
-          });
-        }
-
-        // MARKET
-        // FIX: Use getAuthHeaders helper
-        const marketRes = await axios.get(
-          `${BACKEND_URL}/market?symbols=ethereum,bitcoin,binancecoin,matic-network,solana&order=market_cap_desc&sparkline=false&price_change_percentage=1h,24h,7d`
-        ); // Note: Fixed URL params to valid symbols
-
-        const data = marketRes.data?.data || [];
-        setMarketData(Array.isArray(data) ? data : []);
-
-      } catch (err) {
-        console.error(err);
-
-        // FIX: Handle 401 specifically
-        if (err.response?.status === 401) {
-          localStorage.removeItem('authToken');
-          navigate('/auth/login');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-    
-    // Polling logic (reduced from 30s to 10s for responsiveness, or keep as needed)
-    const interval = setInterval(fetchData, 10000); 
-
-    return () => clearInterval(interval);
-  }, [navigate]);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    // In a real app, you'd call fetchData() again
-    setTimeout(() => setRefreshing(false), 1000); 
   };
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', height: '100vh' }}>
-        Loading...
-      </div>
-    );
-  }
-
-  const totalBalance = Object.values(balances || {}).reduce(
-    (acc, b) => acc + (b?.usdValue || 0),
-    0
+  if (loading) return (
+    <div className="dashboard-loading-gold">
+      <div className="loader-gold"></div>
+    </div>
   );
 
-  // Calculate average change (handle undefined rates gracefully)
-  const totalChange =
-    marketData.length > 0
-      ? marketData.reduce(
-          (acc, c) => acc + (parseFloat(c?.price_change_percentage_24h) || 0),
-          0
-        ) / marketData.length
-      : 0;
-
   return (
-    <DashboardContainer>
-      <AnimatedBackground />
+    <div className="dashboard-container-gold">
+      
+      {/* --- TOP HEADER (Logo & Settings Icon) --- */}
+      <header className="top-header-gold">
+        <div className="header-left">
+          {/* Connected to logo.png */}
+          <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="Logo" className="logo-gold" />
+        </div>
 
-      <div className="dashboard-content">
-        <header className="dashboard-header">
-          <div className="header-actions">
-            <button onClick={handleRefresh} disabled={refreshing}>
-              {refreshing ? <div className="spin"><FiRefreshCw /></div> : <FiRefreshCw />}
-            </button>
-            <button onClick={() => navigate('/search')}>
-              <FiSearch />
-            </button>
-            <button onClick={() => navigate('/settings')}>
-              <FiSettings />
+        <div className="header-right">
+          <div className="network-selector-gold">
+            <span>Ethereum Mainnet</span>
+            <i className="fa-solid fa-chevron-down"></i>
+          </div>
+          
+          <div className="header-icon" onClick={() => navigate('/app/notifications')}>
+            <FontAwesomeIcon icon={faBell} />
+          </div>
+        </div>
+      </header>
+
+      {/* --- MAIN CONTENT --- */}
+      <main className="main-scroll-area-gold">
+        
+        {/* Balance Card */}
+        <div className="balance-card-gold">
+          <div className="balance-row-gold">
+            <span className="balance-label-gold">Total Balance</span>
+            <button onClick={() => setIsBalanceHidden(!isBalanceHidden)} className="eye-btn-gold">
+              {isBalanceHidden ? <FontAwesomeIcon icon={faEyeSlash} /> : <FontAwesomeIcon icon={faEye} />}
             </button>
           </div>
-        </header>
-
-        {/* WALLET */}
-        <WalletCard>
-          <div>
-            <div>Total Balance</div>
-
-            <div className="balance-display">
-              {showBalance ? (
-                <>{totalBalance.toFixed(2)}</>
-              ) : (
-                '••••••••••'
-              )}
-
-              <button 
-                className="toggle-btn" 
-                onClick={() => setShowBalance(!showBalance)}
-                title={showBalance ? "Hide Balance" : "Show Balance"}
-              >
-                {showBalance ? <FiEyeOff /> : <FiEye />}
-              </button>
-            </div>
-
-            <div className="balance-change">
-              <span>{totalChange >= 0 ? '+' : ''}</span>
-              <span className={totalChange >= 0 ? 'positive' : 'negative'}>
-                {Math.abs(totalChange).toFixed(2)}%
-              </span>
-            </div>
+          
+          <div className="balance-amount-gold">
+            {isBalanceHidden ? '••••••••' : `$${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
           </div>
-
-          <div>
-            <span>{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</span>
-            <button 
-              onClick={() => navigator.clipboard.writeText(walletAddress || '')}
-              title="Copy Address"
-            >
-              <FiCopy />
-            </button>
-          </div>
-        </WalletCard>
-
-        {/* MARKET */}
-        <div className="market-overview">
-          <h2>Market</h2>
-
-          <div className="market-grid">
-            {marketData.slice(0, 4).map((crypto) => (
-              <MarketCard key={crypto.id || Math.random()} crypto={crypto} />
-            ))}
+          
+          <div className="balance-actions-gold">
+             <span className="tag-gold">ETH</span>
+             <span className="tag-gold active">+2.4%</span>
           </div>
         </div>
 
-        {/* ACTIVITY */}
-        <div className="recent-activity">
-          <h2>Recent Activity</h2>
+        {/* Assets List */}
+        <div className="assets-section-gold">
+          <h3 className="section-title-gold">Assets</h3>
+          <div className="assets-list-gold">
+            {balances.map((asset, index) => (
+              <div 
+                key={index} 
+                className="asset-item-gold"
+                onClick={() => navigate('/app/asset/' + asset.symbol)}
+              >
+                <div className="asset-left-gold">
+                  <div className="asset-icon-gold">
+                    <i className={asset.icon}></i>
+                  </div>
+                  <div className="asset-info-gold">
+                    <div className="asset-name-gold">{asset.name}</div>
+                    <div className="asset-balance-gold">
+                      {isBalanceHidden ? '••••••' : `${asset.balance} ${asset.symbol}`}
+                    </div>
+                  </div>
+                </div>
 
-          <div className="activity-list">
-            {[1, 2, 3].map((item) => (
-              <div key={item}>
-                {item % 2 === 0 ? 'Sent' : 'Received'} ETH
+                <div className="asset-right-gold">
+                  <div className="asset-value-gold">
+                    {isBalanceHidden ? '••••••' : `$${(asset.balance * asset.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                  </div>
+                  <div className={`asset-change-gold ${asset.change >= 0 ? 'positive' : 'negative'}`}>
+                    {asset.change}%
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </div>
-      </div>
-    </DashboardContainer>
+      </main>
+
+      {/* --- BOTTOM NAVIGATION (MetaMask Style) --- */}
+      <nav className="bottom-nav-gold">
+        {/* 1. Home (Wallet) */}
+        <div 
+          className={`nav-item-gold ${window.location.pathname === '/app' ? 'active' : ''}`}
+          onClick={() => navigate('/app')}
+        >
+          <div className="nav-icon-gold">
+             <FontAwesomeIcon icon={faWallet} />
+          </div>
+          <span>Wallet</span>
+        </div>
+
+        {/* 2. Browse (NFT Market) */}
+        <div 
+          className={`nav-item-gold ${window.location.pathname.includes('browse') ? 'active' : ''}`}
+          onClick={() => navigate('/app/nft-market')}
+        >
+          <div className="nav-icon-gold">
+            <FontAwesomeIcon icon={faGlobe} />
+          </div>
+          <span>Browse</span>
+        </div>
+
+        {/* 3. Send */}
+        <div 
+          className={`nav-item-gold ${window.location.pathname.includes('send') ? 'active' : ''}`}
+          onClick={() => navigate('/app/send')}
+        >
+          <div className="nav-icon-gold send">
+            <FontAwesomeIcon icon={faArrowUp} />
+          </div>
+          <span>Send</span>
+        </div>
+
+        {/* 4. Swap */}
+        <div 
+          className={`nav-item-gold ${window.location.pathname.includes('swap') ? 'active' : ''}`}
+          onClick={() => navigate('/app/swap')}
+        >
+          <div className="nav-icon-gold swap">
+            <FontAwesomeIcon icon={faRepeat} />
+          </div>
+          <span>Swap</span>
+        </div>
+
+        {/* 5. Buy (Options) */}
+        <div 
+          className={`nav-item-gold ${window.location.pathname.includes('buy') ? 'active' : ''}`}
+          onClick={() => navigate('/app/buy')}
+        >
+          <div className="nav-icon-gold buy">
+            <FontAwesomeIcon icon={faPlus} />
+          </div>
+          <span>Buy</span>
+        </div>
+
+        {/* 6. Settings */}
+        <div 
+          className={`nav-item-gold ${window.location.pathname.includes('settings') ? 'active' : ''}`}
+          onClick={() => navigate('/app/settings')}
+        >
+          <div className="nav-icon-gold">
+            <FontAwesomeIcon icon={faGear} />
+          </div>
+          <span>Settings</span>
+        </div>
+      </nav>
+
+    </div>
   );
 };
 
