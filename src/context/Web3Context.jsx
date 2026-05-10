@@ -1,7 +1,14 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { JsonRpcProvider } from "ethers";
-import { getLocalAccount } from '../utils/storage';
-import { decryptData } from '../utils/crypto';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect
+} from "react";
+
+import { JsonRpcProvider, Wallet } from "ethers";
+
+import { getLocalAccount } from "../utils/storage";
+import { decryptData } from "../utils/crypto";
 
 export const Web3Context = createContext({
   account: null,
@@ -11,7 +18,7 @@ export const Web3Context = createContext({
   network: null,
   error: null,
   unlockWallet: async () => {},
-  logout: () => {},
+  logout: () => {}
 });
 
 export const Web3Provider = ({ children }) => {
@@ -35,8 +42,7 @@ export const Web3Provider = ({ children }) => {
         return;
       }
 
-      // ✅ v6 syntax
-      const ethProvider = new ethers.JsonRpcProvider(
+      const ethProvider = new JsonRpcProvider(
         `https://mainnet.infura.io/v3/${infuraKey}`
       );
 
@@ -49,8 +55,8 @@ export const Web3Provider = ({ children }) => {
 
   const unlockWallet = async (passcodeOrKey) => {
     try {
-      if (!account) throw new Error('No local account found.');
-      if (!provider) throw new Error('Provider not initialized');
+      if (!account) throw new Error("No local account found.");
+      if (!provider) throw new Error("Provider not initialized");
 
       const decryptedSeed = await decryptData(
         account.encryptedSeed,
@@ -66,8 +72,7 @@ export const Web3Provider = ({ children }) => {
       let walletInstance;
 
       try {
-        // ✅ v6 correct usage
-        walletInstance = ethers.Wallet.fromPhrase(decryptedSeed).connect(provider);
+        walletInstance = Wallet.fromPhrase(decryptedSeed).connect(provider);
       } catch (err) {
         console.error("Wallet creation failed:", err);
         throw new Error("Invalid seed phrase");
@@ -76,13 +81,8 @@ export const Web3Provider = ({ children }) => {
       setSeed(decryptedSeed);
       setWallet(walletInstance);
 
-      try {
-        const net = await provider.getNetwork();
-        setNetwork(net);
-      } catch (err) {
-        console.error("Network detection failed:", err);
-        throw new Error("Failed to detect network");
-      }
+      const net = await provider.getNetwork();
+      setNetwork(net);
 
       return walletInstance;
     } catch (err) {
@@ -109,7 +109,7 @@ export const Web3Provider = ({ children }) => {
         network,
         error,
         unlockWallet,
-        logout,
+        logout
       }}
     >
       {children}
