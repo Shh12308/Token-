@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
-  faWallet, faGlobe, faArrowUp, faArrowDown, faRepeat, 
+  faWallet, faGlobe, faArrowUp, faEye, faArrowDown, faRepeat, 
   faPlus, faGear, faBell, faChevronDown 
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
