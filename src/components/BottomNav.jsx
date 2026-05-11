@@ -10,12 +10,12 @@ const BottomNav = () => {
   const location = useLocation();
 
   const navItems = [
-    { path: '/app', icon: faWallet, label: 'Wallet' },
-    { path: '/app/nft-market', icon: faGlobe, label: 'Browse' },
-    { path: '/app/send', icon: faArrowUp, label: 'Send' },
-    { path: '/app/swap', icon: faRepeat, label: 'Swap' },
-    { path: '/app/buy', icon: faPlus, label: 'Buy' },
-    { path: '/app/settings', icon: faGear, label: 'Settings' },
+    { path: '/', icon: faWallet, label: 'Wallet' },
+    { path: '/nft', icon: faGlobe, label: 'Browse' },
+    { path: '/send', icon: faArrowUp, label: 'Send' },
+    { path: '/swap', icon: faRepeat, label: 'Swap' },
+    { path: '/buy', icon: faPlus, label: 'Buy' },
+    { path: '/settings', icon: faGear, label: 'Settings' },
   ];
 
   return (
