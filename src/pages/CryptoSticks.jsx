@@ -33,7 +33,7 @@ ChartJS.register(
   Filler
 );
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
 const CryptoSticks = () => {
   const navigate = useNavigate();
