@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { faArrowLeft, faPaperPlane, faCopy } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faPaperPlane } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import BottomNav from '../components/BottomNav';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
@@ -20,7 +21,7 @@ const SendPage = () => {
     setLoading(true);
 
     try {
-      // 1. Create Transaction Draft
+      // Calls the backend endpoint defined in your server code
       const res = await axios.post(`${API_BASE}/wallets/send`, {
         toAddress,
         amount,
@@ -29,10 +30,10 @@ const SendPage = () => {
         headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
       });
 
-      const unsignedTx = res.data.unsignedTransaction;
-      console.log("Unsigned Transaction:", unsignedTx);
-
-      // 2. Move to confirm step (In real app, this triggers wallet signing)
+      // Backend returns { transaction: {...}, unsignedTransaction: {...} }
+      // In a real non-custodial app, you would sign 'unsignedTransaction' here using ethers.js
+      console.log("Unsigned Transaction:", res.data.unsignedTransaction);
+      
       setStep('confirm');
 
     } catch (err) {
@@ -42,11 +43,12 @@ const SendPage = () => {
     }
   };
 
-  const confirmSend = () => {
-    // 3. Broadcast Transaction (Simulated for this demo)
+  const confirmSend = async () => {
+    // Simulate signing and broadcasting
     setLoading(true);
-    setTimeout(async () => {
-        // Normally you would sign here and call /broadcast
+    setTimeout(() => {
+        // In real flow: const signedTx = wallet.signTransaction(unsignedTx);
+        // await axios.post('/api/wallets/broadcast', { ... });
         alert("Transaction sent! (Simulated)");
         navigate('/app/activity');
     }, 1000);
@@ -77,16 +79,13 @@ const SendPage = () => {
 
             <div className="input-group">
               <label className="label-gold">Recipient Address</label>
-              <div className="input-wrapper-gold">
-                <input 
-                  type="text" 
-                  className="input-gold" 
-                  placeholder="0x..."
-                  value={toAddress}
-                  onChange={(e) => setToAddress(e.target.value)} 
-                />
-                <FontAwesomeIcon icon={faCopy} className="copy-icon-gold" />
-              </div>
+              <input 
+                type="text" 
+                className="input-gold" 
+                placeholder="0x..."
+                value={toAddress}
+                onChange={(e) => setToAddress(e.target.value)} 
+              />
             </div>
 
             <div className="input-group">
@@ -96,7 +95,7 @@ const SendPage = () => {
                 className="input-gold" 
                 placeholder="0.00"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)} 
+                onChange={(e) => setAmount(e.value)} 
               />
             </div>
 
@@ -126,9 +125,7 @@ const SendPage = () => {
           </div>
         )}
       </main>
-      <nav className="bottom-nav-gold">
-        <div className={`nav-item-gold ${window.location.pathname.includes('send') ? 'active' : ''}`} onClick={() => navigate('/app/send')}><span>Send</span></div>
-      </nav>
+      <BottomNav />
     </div>
   );
 };
