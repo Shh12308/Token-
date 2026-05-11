@@ -12,7 +12,7 @@ import Search from '../pages/Search';
 import NFTBrowsePage from '../pages/NFTBrowsePage';
 import SwapPage from '../pages/SwapPage';
 import SettingsPage from '../pages/SettingsPage';
-import CoinPricePage from '../pages/CoinPricePage';
+import Security from '../pages/Security';
 
 import Profile from '../pages/Profile';
 
@@ -36,7 +36,7 @@ const AppRoutes = () => {
         <Route path="/search" element={<ReceivePage />} />
         <Route path="/nft" element={<NFTBrowsePage />} />
         <Route path="/swap" element={<SwapPage />} />
-        <Route path="/coinprice" element={<CoinPricePage />} />
+        <Route path="/security" element={<Security />} />
         <Route path="/settings" element={<SettingsPage />} />
         
         <Route path="/profile" element={<Profile />} />
