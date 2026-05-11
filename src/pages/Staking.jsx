@@ -35,7 +35,7 @@ ChartJS.register(
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
-const CryptoSticks = () => {
+const Staking = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('staking');
   const [expandedPool, setExpandedPool] = useState(null);
@@ -386,4 +386,4 @@ const CryptoSticks = () => {
   );
 };
 
-export default CryptoSticks;
+export default Staking;
