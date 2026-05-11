@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 
 // --- PAGES ---
 import Home from '../pages/Home';
+import Staking from '../pages/Staking';
 import KYCPage from '../pages/KYCPage';
 import BuyPage from '../pages/BuyPage';
 import ReceivePage from '../pages/ReceivePage';
@@ -30,6 +31,7 @@ const AppRoutes = () => {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Home />} />
+        <Route path="/stake" element={<Staking />} />
         <Route path="/kyc" element={<KYCPage />} />
         <Route path="/buy" element={<BuyPage />} />
         <Route path="/send" element={<SendPage />} />
