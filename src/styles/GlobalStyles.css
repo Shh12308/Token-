@@ -3,13 +3,13 @@
    ========================================== */
 :root {
   --bg-dark: #050505;
-  --bg-glass: rgba(20, 20, 25, 0.65); /* Slightly more opaque for readability */
+  --bg-glass: rgba(20, 20, 25, 0.65);
   --bg-input: #0c0c10;
   --bg-card: rgba(18, 18, 22, 0.8);
   --bg-nav: rgba(10, 10, 14, 0.85);
 
   /* Brand Colors */
-  --primary-purple: #8b5cf6; /* Unique Brand Color */
+  --primary-purple: #8b5cf6;
   --primary-blue: #3b82f6;
   --accent-pink: #d946ef;
 
@@ -43,7 +43,6 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  /* Purple Noir Background Mesh */
   background-image: 
     radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 40%),
     radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 40%);
@@ -70,13 +69,226 @@ body {
 }
 
 /* ==========================================
-   LAYOUT & DASHBOARD STRUCTURE
+   AUTHENTICATION LAYOUT (Login / Register)
+   ========================================== */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: var(--bg-dark);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: var(--shadow-soft);
+  text-align: center; /* Center headers */
+  animation: fadeIn 0.4s ease-out;
+}
+
+.auth-card h2 {
+  font-size: 24px;
+  margin-bottom: 8px;
+  color: var(--text-main);
+}
+
+.auth-card p {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+.auth-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.auth-options button,
+.btn-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* Link Style Button */
+.btn-text {
+  background: transparent;
+  border: none;
+  color: var(--primary-purple);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 10px;
+  margin-top: 8px;
+  transition: opacity 0.2s;
+  width: 100%;
+}
+
+.btn-text:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* ==========================================
+   PROGRESS BAR & STEPS
+   ========================================== */
+.progress-bar {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  margin: 24px 0 32px 0;
+}
+
+/* The line connecting the dots */
+.progress-bar::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: var(--border-color);
+  z-index: 0;
+  transform: translateY(-50%);
+}
+
+.progress-step {
+  position: relative;
+  z-index: 1;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.progress-step.active {
+  background: var(--primary-purple);
+  color: white;
+  border-color: var(--primary-purple);
+  box-shadow: 0 0 12px var(--border-glow);
+}
+
+/* ==========================================
+   SEED PHRASE GRID
+   ========================================== */
+.seed-phrase-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.seed-word {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  padding: 10px 4px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: all;
+}
+
+.seed-word:hover {
+  border-color: var(--primary-purple);
+  color: var(--text-main);
+  background: rgba(139, 92, 246, 0.05);
+  transform: translateY(-2px);
+}
+
+/* ==========================================
+   VERIFICATION & CHECKBOXES
+   ========================================== */
+.verification-section {
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+  text-align: left;
+}
+
+.verification-section label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+.checkbox-group {
+  margin: 20px 0;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Custom Checkbox Styling */
+input[type="checkbox"] {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  margin: 0;
+  background: var(--bg-input);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+}
+
+input[type="checkbox"]:checked {
+  background: var(--primary-purple);
+  border-color: var(--primary-purple);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+}
+
+input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  color: white;
+  font-size: 14px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-weight: bold;
+}
+
+/* ==========================================
+   DASHBOARD & NAVIGATION
    ========================================== */
 .dashboard-container-gold {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding-bottom: 90px; /* Space for Bottom Nav */
+  padding-bottom: 90px;
   color: var(--text-main);
 }
 
@@ -103,6 +315,49 @@ body {
   overflow-y: auto;
 }
 
+.bottom-nav-gold {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: var(--bg-nav);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-around;
+  padding: 12px 0 25px 0;
+  z-index: 100;
+}
+
+.nav-item-gold {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+  min-width: 0;
+}
+
+.nav-item-gold .nav-icon-gold {
+  font-size: 20px;
+  margin-bottom: 6px;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.nav-item-gold.active {
+  color: var(--primary-purple);
+}
+
+.nav-item-gold.active .nav-icon-gold {
+  transform: translateY(-2px);
+  color: var(--primary-purple);
+}
+
 /* ==========================================
    CARDS & GLASSMORPHISM
    ========================================== */
@@ -121,15 +376,15 @@ body {
   padding: 24px;
   box-shadow: var(--shadow-soft);
   margin-bottom: 20px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  transition: border-color 0.3s ease;
 }
 
-.card:hover, .balance-card-gold:hover {
+.card:hover {
   border-color: rgba(139, 92, 246, 0.3);
 }
 
 /* ==========================================
-   INPUTS (CRISP & CLEAN)
+   INPUTS & FORMS
    ========================================== */
 .input-gold, input, textarea, select {
   width: 100%;
@@ -138,11 +393,21 @@ body {
   border-radius: 12px;
   padding: 16px;
   color: var(--text-main);
-  font-size: 16px;
+  font-size: 15px;
   transition: all 0.2s ease;
   margin-bottom: 16px;
   font-family: inherit;
   outline: none;
+}
+
+.input-group label {
+  display: block;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-weight: 600;
+  margin-left: 2px;
 }
 
 .input-gold:focus, input:focus, textarea:focus, select:focus {
@@ -150,28 +415,24 @@ body {
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
 }
 
-.input-wrapper-gold {
-  position: relative;
+input::placeholder, textarea::placeholder {
+  color: rgba(255, 255, 255, 0.3);
 }
 
 /* ==========================================
-   BUTTONS: UNIQUE GRADIENT (PURPLE -> BLUE)
+   BUTTONS
    ========================================== */
 .btn-primary, button {
   appearance: none;
   border: none;
   cursor: pointer;
   width: 100%;
-  
-  /* Unique Gradient: Purple -> Blue */
   background: var(--gradient-main);
   color: white;
-  
   border-radius: 14px;
   padding: 16px;
   font-size: 16px;
   font-weight: 600;
-  
   box-shadow: 0 4px 15px rgba(139, 92, 246, 0.25);
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s ease;
 }
@@ -184,6 +445,12 @@ body {
 
 .btn-primary:active, button:active {
   transform: scale(0.98);
+}
+
+.btn-primary:disabled, button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .btn-secondary, .button-secondary {
@@ -200,92 +467,17 @@ body {
 
 .btn-secondary:hover, .button-secondary:hover {
   border-color: var(--primary-purple);
-  color: var(--text-main);
+  color: var(--primary-purple);
   background: rgba(139, 92, 246, 0.05);
 }
 
 /* ==========================================
-   BOTTOM NAVIGATION (META-MASK STYLE)
+   COMPONENT SPECIFIC (Wallet Dashboard)
    ========================================== */
-.bottom-nav-gold {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background: var(--bg-nav);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-around;
-  padding: 12px 0 25px 0; /* Bottom padding for iOS home bar */
-  z-index: 100;
-}
-
-.nav-item-gold {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  font-size: 12px;
-  cursor: pointer;
-  transition: color 0.2s ease, transform 0.2s ease;
-  flex: 1;
-  min-width: 0;
-}
-
-.nav-item-gold .nav-icon-gold {
-  font-size: 20px;
-  margin-bottom: 6px;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.nav-item-gold.active {
-  color: var(--primary-purple);
-  font-weight: 600;
-}
-
-.nav-item-gold.active .nav-icon-gold {
-  transform: translateY(-2px);
-  color: var(--primary-purple);
-}
-
-/* Specific Nav Styles */
-.nav-item-gold .nav-icon-gold.send { color: var(--primary-blue); }
-.nav-item-gold .nav-icon-gold.swap { color: var(--primary-purple); }
-.nav-item-gold .nav-icon-gold.buy { color: #00e676; }
-
-/* ==========================================
-   COMPONENT SPECIFIC STYLES
-   ========================================== */
-
-/* --- HEADER ELEMENTS --- */
-.logo-gold {
-  height: 32px;
-  width: auto;
-}
-
-.header-icon {
-  padding: 8px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-main);
-  font-size: 18px;
-  cursor: pointer;
-}
-
-.network-selector-gold {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--primary-blue);
-  margin-right: 12px;
-}
-
-/* --- BALANCE CARD --- */
 .balance-card-gold {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1));
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.15));
   border-color: rgba(139, 92, 246, 0.2);
+  text-align: left;
 }
 
 .balance-row-gold {
@@ -295,47 +487,10 @@ body {
   margin-bottom: 12px;
 }
 
-.balance-label-gold {
-  font-size: 14px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-weight: 600;
-}
-
 .balance-amount-gold {
   font-size: 36px;
   font-weight: 700;
-  color: var(--text-main);
   margin-bottom: 16px;
-  letter-spacing: -1px;
-}
-
-.balance-actions-gold {
-  display: flex;
-  gap: 8px;
-}
-
-.tag-gold {
-  padding: 6px 12px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.tag-gold.active {
-  background: rgba(0, 230, 118, 0.15);
-  color: #00e676;
-  border: 1px solid rgba(0, 230, 118, 0.2);
-}
-
-/* --- ASSET LIST --- */
-.section-title-gold {
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 16px;
-  color: var(--text-main);
 }
 
 .assets-list-gold {
@@ -352,7 +507,6 @@ body {
   padding: 16px;
   border-radius: 16px;
   cursor: pointer;
-  transition: background 0.2s;
 }
 
 .asset-item-gold:hover {
@@ -376,23 +530,10 @@ body {
   font-size: 18px;
 }
 
-.asset-right-gold {
-  text-align: right;
-}
-
-.asset-value-gold {
-  font-weight: 700;
-  font-size: 16px;
-}
-
-.asset-change-gold {
-  font-size: 13px;
-  font-weight: 600;
-}
 .asset-change-gold.positive { color: #00e676; }
 .asset-change-gold.negative { color: #ff4d4d; }
 
-/* --- SWAP & SEND CARDS --- */
+/* Swap & Send Styles */
 .swap-header-gold, .send-header-gold, .buy-header-gold {
   display: flex;
   align-items: center;
@@ -402,43 +543,16 @@ body {
   border-bottom: 1px solid var(--border-color);
 }
 
-.swap-arrow-gold {
-  display: flex;
-  justify-content: center;
-  margin: -12px 0;
-  position: relative;
-  z-index: 10;
-}
-
-.swap-arrow-gold i {
-  background: var(--bg-card);
-  border: 4px solid var(--bg-dark);
-  border-radius: 50%;
-  padding: 8px;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
 .swap-input-group-gold {
   background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 16px;
   margin-bottom: 8px;
-  transition: border-color 0.2s;
 }
 
 .swap-input-group-gold:focus-within {
   border-color: var(--primary-purple);
-}
-
-.input-label-gold {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 600;
 }
 
 .select-badge-gold {
@@ -451,120 +565,47 @@ body {
   cursor: pointer;
 }
 
-.swap-settings-gold {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.setting-row-gold span:first-child {
-  color: var(--text-main);
-}
-
-/* --- RECEIVE --- */
-.receive-card-gold {
-  text-align: center;
-}
-
-.qr-placeholder-gold {
-  background: white;
-  width: 200px;
-  height: 200px;
-  margin: 20px auto;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: black;
-}
-
-.address-display-gold {
-  margin-top: 20px;
-}
-
-.address-box-gold {
-  background: var(--bg-input);
+/* ==========================================
+   UTILITY CLASSES
+   ========================================== */
+.error-msg {
+  color: #ff4d4d;
+  background: rgba(255, 77, 77, 0.1);
   padding: 12px;
   border-radius: 8px;
-  word-break: break-all;
-  font-family: monospace;
-  color: var(--text-muted);
-  margin-bottom: 12px;
-  font-size: 13px;
-}
-
-/* --- UTILITY CLASSES --- */
-.label-gold {
-  display: block;
+  text-align: center;
+  margin-bottom: 16px;
   font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: var(--text-muted);
-}
-
-.network-pill-gold {
-  background: rgba(59, 130, 246, 0.15);
-  color: var(--primary-blue);
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.secure-note-gold {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 16px;
-  color: var(--text-muted);
-  font-size: 13px;
+  border: 1px solid rgba(255, 77, 77, 0.2);
+  animation: fadeIn 0.3s ease;
 }
 
 .text-muted { color: var(--text-muted) !important; }
-.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .text-center { text-align: center; }
-.text-sm { font-size: 0.875rem; }
 
-/* --- ANIMATIONS --- */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--bg-input);
+  border-top-color: var(--primary-purple);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 20px auto;
+}
+
+/* ==========================================
+   ANIMATIONS
+   ========================================== */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-/* Loading State */
-.dashboard-loading-gold {
-  display: flex;
-  height: 100vh;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-dark);
-}
-
-.loader-gold {
-  width: 48px;
-  height: 48px;
-  border: 4px solid var(--bg-input);
-  border-top-color: var(--primary-purple);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-/* Responsive Tweaks */
-@media (min-width: 768px) {
-  .dashboard-container-gold {
-    flex-direction: row;
-  }
-  .bottom-nav-gold {
-    display: none; /* Desktop usually uses side nav */
-  }
-  .main-scroll-area-gold {
-    max-width: 800px;
-  }
 }
