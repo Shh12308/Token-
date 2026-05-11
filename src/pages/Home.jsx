@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { 
-  faWallet, faGlobe, faEyeSlash, faArrowUp, faEye, faArrowDown, faRepeat, 
-  faPlus, faGear, faBell, faChevronDown 
-} from '@fortawesome/free-solid-svg-icons';
+import { faEyeSlash, faEye, faBell } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import BottomNav from '../components/BottomNav';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
@@ -21,8 +19,13 @@ const Home = () => {
 
   // Fetch Data on Mount
   useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if(!token) {
+        navigate('/login');
+        return;
+    }
     fetchDashboardData();
-  }, []);
+  }, [navigate]);
 
   const fetchDashboardData = async () => {
     try {
@@ -44,7 +47,6 @@ const Home = () => {
       setMarketData(priceMap);
 
       // 3. Process Assets for UI
-      // Backend returns: { eth: "0.5", usdc: "100.0" }
       const assets = [
         {
           symbol: 'ETH',
@@ -52,7 +54,7 @@ const Home = () => {
           balance: res.data.eth || 0,
           price: priceMap['ETH'] || 2800,
           change: 2.4,
-          icon: 'fa-brands fa-ethereum' // Use FontAwesome Brand
+          icon: 'fa-brands fa-ethereum'
         },
         {
           symbol: 'USDC',
@@ -65,7 +67,7 @@ const Home = () => {
         {
           symbol: 'BTC',
           name: 'Bitcoin',
-          balance: 0.005, // Mock or fetch from backend if available
+          balance: 0.005, 
           price: priceMap['BTC'] || 45000,
           change: 1.2,
           icon: 'fa-brands fa-bitcoin'
@@ -83,8 +85,11 @@ const Home = () => {
 
     } catch (err) {
       console.error("Dashboard Error:", err);
-      // If backend fails, maybe redirect to login if 401
-      if(err.response?.status === 401) navigate('/login');
+      // If backend fails or returns 401, redirect to login
+      if(err.response?.status === 401) {
+        localStorage.removeItem('authToken');
+        navigate('/login');
+      }
     } finally {
       setLoading(false);
     }
@@ -99,10 +104,9 @@ const Home = () => {
   return (
     <div className="dashboard-container-gold">
       
-      {/* --- TOP HEADER (Logo & Settings Icon) --- */}
+      {/* --- TOP HEADER --- */}
       <header className="top-header-gold">
         <div className="header-left">
-          {/* Connected to logo.png */}
           <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="Logo" className="logo-gold" />
         </div>
 
@@ -176,75 +180,7 @@ const Home = () => {
         </div>
       </main>
 
-      {/* --- BOTTOM NAVIGATION (MetaMask Style) --- */}
-      <nav className="bottom-nav-gold">
-        {/* 1. Home (Wallet) */}
-        <div 
-          className={`nav-item-gold ${window.location.pathname === '/app' ? 'active' : ''}`}
-          onClick={() => navigate('/app')}
-        >
-          <div className="nav-icon-gold">
-             <FontAwesomeIcon icon={faWallet} />
-          </div>
-          <span>Wallet</span>
-        </div>
-
-        {/* 2. Browse (NFT Market) */}
-        <div 
-          className={`nav-item-gold ${window.location.pathname.includes('browse') ? 'active' : ''}`}
-          onClick={() => navigate('/app/nft-market')}
-        >
-          <div className="nav-icon-gold">
-            <FontAwesomeIcon icon={faGlobe} />
-          </div>
-          <span>Browse</span>
-        </div>
-
-        {/* 3. Send */}
-        <div 
-          className={`nav-item-gold ${window.location.pathname.includes('send') ? 'active' : ''}`}
-          onClick={() => navigate('/app/send')}
-        >
-          <div className="nav-icon-gold send">
-            <FontAwesomeIcon icon={faArrowUp} />
-          </div>
-          <span>Send</span>
-        </div>
-
-        {/* 4. Swap */}
-        <div 
-          className={`nav-item-gold ${window.location.pathname.includes('swap') ? 'active' : ''}`}
-          onClick={() => navigate('/app/swap')}
-        >
-          <div className="nav-icon-gold swap">
-            <FontAwesomeIcon icon={faRepeat} />
-          </div>
-          <span>Swap</span>
-        </div>
-
-        {/* 5. Buy (Options) */}
-        <div 
-          className={`nav-item-gold ${window.location.pathname.includes('buy') ? 'active' : ''}`}
-          onClick={() => navigate('/app/buy')}
-        >
-          <div className="nav-icon-gold buy">
-            <FontAwesomeIcon icon={faPlus} />
-          </div>
-          <span>Buy</span>
-        </div>
-
-        {/* 6. Settings */}
-        <div 
-          className={`nav-item-gold ${window.location.pathname.includes('settings') ? 'active' : ''}`}
-          onClick={() => navigate('/app/settings')}
-        >
-          <div className="nav-icon-gold">
-            <FontAwesomeIcon icon={faGear} />
-          </div>
-          <span>Settings</span>
-        </div>
-      </nav>
-
+      <BottomNav />
     </div>
   );
 };
