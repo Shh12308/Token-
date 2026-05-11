@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { faRepeat, faChevronDown, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faRepeat, faChevronDown, faInfoCircle } from '@fortawesome/free-solid-svg-icons'; // ADDED faArrowBack
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import BottomNav from '../components/BottomNav'; // Import shared nav
 
 const API_BASE = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
@@ -27,9 +28,7 @@ const SwapPage = () => {
         headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
       });
       
-      // In a real app, you would then sign this transaction via ethers.js
-      // and broadcast it. Here we just show success.
-      alert('Swap simulation successful!');
+      alert(`Swap simulation successful! TxID: ${res.data.transactionId}`);
       navigate('/app/activity');
     } catch (err) {
       console.error(err);
@@ -43,7 +42,8 @@ const SwapPage = () => {
     <div className="dashboard-container-gold">
       <header className="top-header-gold">
         <div className="header-left" onClick={() => navigate('/app')}>
-          <FontAwesomeIcon icon="fa-arrow-left" /> Back
+          {/* FIX: Use object, not string */}
+          <FontAwesomeIcon icon={faArrowLeft} /> Back
         </div>
         <div className="header-right">
            <span className="network-pill-gold">Ethereum</span>
@@ -115,11 +115,9 @@ const SwapPage = () => {
           </button>
         </div>
       </main>
-
-      <nav className="bottom-nav-gold">
-        {/* ... (Reuse Bottom Nav code or import a component) ... */}
-        <div className={`nav-item-gold ${window.location.pathname.includes('swap') ? 'active' : ''}`} onClick={() => navigate('/app/swap')}><span>Swap</span></div>
-      </nav>
+      
+      {/* Use Shared Nav */}
+      <BottomNav />
     </div>
   );
 };
