@@ -77,14 +77,14 @@ const RegisterPage = () => {
 
       // 3. BACKEND AUTHENTICATION (Signature flow)
       // We verify the wallet exists on the backend and link the email if provided
-      const nonce = await axios.post(`${API_BASE_URL}/auth/wallet/nonce`, {
+      const nonce = await axios.post(`${API_BASE_URL}/auth/nonce`, {
         walletAddress: wallet.address
       });
 
       const messageToSign = nonce.data.messageToSign;
       const signature = await wallet.signMessage(messageToSign);
 
-      const authRes = await axios.post(`${API_BASE_URL}/auth/wallet/verify`, {
+      const authRes = await axios.post(`${API_BASE_URL}/auth/verify`, {
         walletAddress: wallet.address,
         signature,
         message: messageToSign,
