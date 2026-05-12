@@ -59,7 +59,7 @@ const RegisterPage = () => {
   const handleCreateAccount = async () => {
     // Validation
     if (!saved) return setError('Please confirm you have saved your seed phrase.');
-    if (passcode.length < 12) return setError('Passcode must be at least 6 characters.');
+    if (passcode.length < 6) return setError('Passcode must be at least 6 characters.');
     if (!verifySeed()) return setError('Seed verification words do not match.');
 
     setLoading(true);
@@ -109,7 +109,7 @@ const RegisterPage = () => {
         })
       );
 
-      navigate('/app/dashboard');
+      navigate('/home');
 
     } catch (err) {
       console.error(err);
