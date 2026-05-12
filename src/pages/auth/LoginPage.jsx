@@ -18,56 +18,46 @@ const LoginPage = () => {
   const navigate = useNavigate();
 
   // UI State
-  const [mode, setMode] = useState('select'); // select, email, wallet-options, passcode, phrase
+  const [mode, setMode] = useState('select'); // select, local-options, passcode, phrase
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Form Data
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [passcode, setPasscode] = useState('');
   const [phrase, setPhrase] = useState('');
 
   const storedWallet = getStoredWallet();
 
-  // --- 1. CORE AUTH FUNCTIONS ---
+  // --- 1. CORE NON-CUSTODIAL AUTH FUNCTION ---
 
-  // A. Traditional Email Login
-  const handleEmailLogin = async (e) => {
-    e.preventDefault();
+  /**
+   * Universal Authentication Function
+   * Accepts an address and a signer (either from ethers.Wallet or Browser Extension Provider)
+   */
+  const authenticate = async (address, signer) => {
     setLoading(true);
     setError('');
 
     try {
-      const res = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
-      
-      localStorage.setItem('authToken', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      navigate('/app/dashboard');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Check credentials.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // B. Wallet Signature Login (Non-Custodial)
-  const loginWithWallet = async (privateKey) => {
-    try {
-      const wallet = new ethers.Wallet(privateKey);
-
-      // 1. Request Nonce
-      const nonceRes = await axios.post(`${API_BASE_URL}/auth/wallet/nonce`, {
-        walletAddress: wallet.address
+      // 1. Request Nonce from Backend
+      const nonceRes = await axios.post(`${API_BASE_URL}/auth/nonce`, {
+        walletAddress: address
       });
-      const messageToSign = nonceRes.data.messageToSign;
 
-      // 2. Sign Message
-      const signature = await wallet.signMessage(messageToSign);
+      // NOTE: Ensure your backend returns the exact string to be signed.
+      // Standard Web3 auth flows return a message like: "BlockVault Login\nNonce: 123abc"
+      const messageToSign = nonceRes.data.messageToSign || nonceRes.data.message;
 
-      // 3. Verify & Get Token
-      const verifyRes = await axios.post(`${API_BASE_URL}/auth/wallet/verify`, {
-        walletAddress: wallet.address,
+      if (!messageToSign) {
+        throw new Error("Backend did not return a message to sign.");
+      }
+
+      // 2. Sign Message (MetaMask prompts the user here, or local wallet signs in memory)
+      const signature = await signer.signMessage(messageToSign);
+
+      // 3. Verify Signature & Get JWT Token
+      const verifyRes = await axios.post(`${API_BASE_URL}/auth/verify`, {
+        walletAddress: address,
         signature,
         message: messageToSign
       });
@@ -79,13 +69,40 @@ const LoginPage = () => {
       }
     } catch (err) {
       console.error(err);
-      setError('Wallet login failed.');
+      setError(err.response?.data?.message || 'Wallet authentication failed.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // C. Passcode Unlock (Decrypt Local Storage)
+  // --- 2. LOGIN METHOD HANDLERS ---
+
+  // A. Browser Extension Login (MetaMask, Coinbase, Brave Wallet, etc.)
+  const handleBrowserWalletLogin = async () => {
+    if (!window.ethereum) {
+      return setError('No Web3 wallet detected. Please install MetaMask.');
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []); // Prompts user to connect
+      const signer = provider.getSigner();
+      const address = await signer.getAddress();
+      
+      await authenticate(address, signer);
+    } catch (err) {
+      console.error(err);
+      setError('Wallet connection rejected or failed.');
+      setLoading(false);
+    }
+  };
+
+  // B. Passcode Unlock (Decrypts local storage, signs in memory)
   const handlePasscodeLogin = async () => {
-    if (!storedWallet) return setError('No local wallet found. Please register first.');
+    if (!storedWallet) return setError('No local wallet found. Please import one first.');
     
     setLoading(true);
     setError('');
@@ -94,35 +111,36 @@ const LoginPage = () => {
       const key = await deriveKeyFromPasscode(passcode);
       const decryptedSeed = await decryptData(storedWallet.encryptedSeed, key, storedWallet.iv);
       
-      // Derive private key from decrypted seed
-      const wallet = ethers.Wallet.fromPhrase(decryptedSeed);
-      await loginWithWallet(wallet.privateKey);
+      // Create a temporary wallet instance in memory
+      const wallet = new ethers.Wallet.fromPhrase(decryptedSeed);
+      await authenticate(wallet.address, wallet);
     } catch (err) {
       setError('Invalid passcode.');
-    } finally {
       setLoading(false);
     }
   };
 
-  // D. Seed Phrase Import
+  // C. Seed Phrase Import
   const handlePhraseLogin = async () => {
     if (!phrase || phrase.trim().split(/\s+/).length < 12) {
-      return setError('Invalid seed phrase');
+      return setError('Invalid seed phrase. Must be 12 or 24 words.');
     }
 
     setLoading(true);
     setError('');
 
     try {
+      // Create a temporary wallet instance in memory
       const wallet = ethers.Wallet.fromPhrase(phrase.trim());
-      await loginWithWallet(wallet.privateKey);
-    } catch {
-      setError('Invalid seed phrase');
+      await authenticate(wallet.address, wallet);
+    } catch (err) {
+      console.error(err);
+      setError('Invalid seed phrase.');
       setLoading(false);
     }
   };
 
-  // E. Biometric Login
+  // D. Biometric Login
   const handleBiometricLogin = async () => {
     if (!storedWallet) return setError('No wallet found to unlock.');
     if (!isBiometricAvailable()) return setError('Biometrics not supported on this device.');
@@ -131,108 +149,67 @@ const LoginPage = () => {
     setError('');
 
     try {
-      // NOTE: This simulates biometrics acting as the 'passcode' for decryption.
-      // In a production WebAuthn flow, you would request a credential here.
-      // For this logic structure, we use the specific key 'biometric-unlock'.
-      
-      // If you have a real biometric SDK, replace this block with their logic.
-      // Otherwise, we treat the 'biometric-unlock' string as the password.
+      // In a production app, you'd use WebAuthn to gate access to the decryption key.
+      // For this flow, we derive the key via the biometric-unlock string.
       const key = await deriveKeyFromPasscode('biometric-unlock'); 
-      
-      // Attempt to decrypt. If this was encrypted with a passcode, this will fail.
-      // This works if the wallet was originally 'registered' using biometrics.
       const decryptedSeed = await decryptData(storedWallet.encryptedSeed, key, storedWallet.iv);
       
       const wallet = ethers.Wallet.fromPhrase(decryptedSeed);
-      await loginWithWallet(wallet.privateKey);
-      
+      await authenticate(wallet.address, wallet);
     } catch (err) {
       console.error(err);
       setError('Biometric verification failed or wallet not bound to biometrics.');
-    } finally {
       setLoading(false);
     }
   };
 
-  // --- 2. RENDERERS ---
+  // --- 3. RENDERERS ---
 
   if (mode === 'select') {
     return (
       <div className="auth-page">
         <div className="auth-card">
-          <h2>Welcome Back</h2>
-          <p className="text-muted">How would you like to sign in?</p>
+          <h2>Welcome to BlockVault</h2>
+          <p className="text-muted">Non-Custodial Web3 Login</p>
           
           <div className="auth-options">
-            <button className="btn-secondary" onClick={() => setMode('email')}>
-              <i className="fa-solid fa-envelope"></i> Email & Password
+            <button className="btn-primary" onClick={handleBrowserWalletLogin} disabled={loading}>
+              <i className="fa-solid fa-puzzle-piece"></i> 
+              {loading ? 'Connecting...' : 'Connect Browser Wallet'}
             </button>
             
-            <button className="btn-secondary" onClick={() => setMode('wallet-options')}>
-              <i className="fa-solid fa-wallet"></i> Wallet / Seed Phrase
+            <div className="divider">OR</div>
+
+            <button className="btn-secondary" onClick={() => setMode('local-options')}>
+              <i className="fa-solid fa-key"></i> Use Local Wallet / Seed Phrase
             </button>
           </div>
+          
+          {error && <div className="error-msg">{error}</div>}
         </div>
       </div>
     );
   }
 
-  if (mode === 'email') {
+  if (mode === 'local-options') {
     return (
       <div className="auth-page">
         <div className="auth-card">
-          <h2>Email Login</h2>
-          <form onSubmit={handleEmailLogin}>
-            <div className="input-group">
-              <label>Email Address</label>
-              <input 
-                type="email" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                placeholder="name@example.com" 
-                required 
-              />
-            </div>
-            <div className="input-group">
-              <label>Password</label>
-              <input 
-                type="password" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                placeholder="••••••••" 
-                required 
-              />
-            </div>
-            {error && <div className="error-msg">{error}</div>}
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Logging in...' : 'Sign In'}
-            </button>
-          </form>
-          <button className="btn-text" onClick={() => setMode('select')}>Back</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (mode === 'wallet-options') {
-    return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <h2>Unlock Wallet</h2>
+          <h2>Unlock Local Wallet</h2>
           
           {isBiometricAvailable() && storedWallet && (
-            <button className="btn-primary" onClick={handleBiometricLogin}>
+            <button className="btn-primary" onClick={handleBiometricLogin} disabled={loading}>
               🔓 Biometric Unlock
             </button>
           )}
 
           {storedWallet && (
-            <button className="btn-secondary" onClick={() => setMode('passcode')}>
+            <button className="btn-secondary" onClick={() => setMode('passcode')} disabled={loading}>
               🔐 Passcode
             </button>
           )}
 
-          <button className="btn-secondary" onClick={() => setMode('phrase')}>
+          <button className="btn-secondary" onClick={() => setMode('phrase')} disabled={loading}>
             🔑 Seed Phrase / Import
           </button>
 
@@ -248,20 +225,22 @@ const LoginPage = () => {
       <div className="auth-page">
         <div className="auth-card">
           <h2>Enter Passcode</h2>
-          <input
-            type="password"
-            inputMode="numeric"
-            maxLength={6}
-            value={passcode}
-            onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))}
-            placeholder="••••••"
-            autoFocus
-          />
+          <div className="input-group">
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              value={passcode}
+              onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))}
+              placeholder="••••••"
+              autoFocus
+            />
+          </div>
           {error && <div className="error-msg">{error}</div>}
           <button onClick={handlePasscodeLogin} disabled={loading} className="btn-primary">
             {loading ? 'Unlocking...' : 'Unlock'}
           </button>
-          <button className="btn-text" onClick={() => setMode('wallet-options')}>Back</button>
+          <button className="btn-text" onClick={() => setMode('local-options')}>Back</button>
         </div>
       </div>
     );
@@ -272,17 +251,19 @@ const LoginPage = () => {
       <div className="auth-page">
         <div className="auth-card">
           <h2>Import Wallet</h2>
-          <textarea
-            value={phrase}
-            onChange={(e) => setPhrase(e.target.value)}
-            placeholder="Enter your 12 or 24 word seed phrase..."
-            rows={4}
-          />
+          <div className="input-group">
+            <textarea
+              value={phrase}
+              onChange={(e) => setPhrase(e.target.value)}
+              placeholder="Enter your 12 or 24 word seed phrase..."
+              rows={4}
+            />
+          </div>
           {error && <div className="error-msg">{error}</div>}
           <button onClick={handlePhraseLogin} disabled={loading} className="btn-primary">
             {loading ? 'Verifying...' : 'Import & Login'}
           </button>
-          <button className="btn-text" onClick={() => setMode('wallet-options')}>Back</button>
+          <button className="btn-text" onClick={() => setMode('local-options')}>Back</button>
         </div>
       </div>
     );
