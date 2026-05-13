@@ -88,7 +88,7 @@ const Home = () => {
       // If backend fails or returns 401, redirect to login
       if(err.response?.status === 401) {
         localStorage.removeItem('authToken');
-        navigate('/login');
+        navigate('/auth/login');
       }
     } finally {
       setLoading(false);
