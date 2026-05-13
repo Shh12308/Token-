@@ -15,7 +15,7 @@ const API_BASE_URL =
 
 const ProgressBar = ({ step }) => (
   <div className="progress-bar">
-    <div className={`progress-step ${step >= 1 ? 'active' : ''}`}>1. Identity</div>
+    <div className={`progress-step ${step >= 1 ? 'active' : ''}`}>1. Get Started</div>
     <div className={`progress-step ${step >= 2 ? 'active' : ''}`}>2. Security</div>
     <div className={`progress-step ${step >= 3 ? 'active' : ''}`}>3. Secret Key</div>
   </div>
@@ -35,7 +35,6 @@ const RegisterPage = () => {
   const navigate = useNavigate();
 
   const [step, setStep] = useState(1);
-  const [email, setEmail] = useState('');
   const [passcode, setPasscode] = useState('');
   const [seedPhrase, setSeedPhrase] = useState([]);
   const [confirm, setConfirm] = useState({ w1: '', w2: '' });
@@ -75,21 +74,25 @@ const RegisterPage = () => {
       // 2. DERIVE WALLET
       const wallet = ethers.Wallet.fromPhrase(phraseString);
 
-      // 3. BACKEND AUTHENTICATION (Signature flow)
-      // We verify the wallet exists on the backend and link the email if provided
-      const nonce = await axios.post(`${API_BASE_URL}/auth/nonce`, {
+      // 3. BACKEND AUTHENTICATION (Nonce -> Sign -> Verify)
+      const nonceRes = await axios.post(`${API_BASE_URL}/auth/nonce`, {
         walletAddress: wallet.address
       });
 
-      const messageToSign = nonce.data.messageToSign;
+      // CRITICAL FIX: Expect the backend to return the actual message containing the nonce.
+      const messageToSign = nonceRes.data.messageToSign || nonceRes.data.message;
+      
+      if (!messageToSign || messageToSign === 'ok') {
+        throw new Error("Authentication setup error: Backend did not return a valid message to sign.");
+      }
+
       const signature = await wallet.signMessage(messageToSign);
 
       const authRes = await axios.post(`${API_BASE_URL}/auth/verify`, {
         walletAddress: wallet.address,
         signature,
         message: messageToSign,
-        email, // Optional: Link email to this wallet
-        walletType: 'created'
+        walletType: 'created' // Removed email, DB is wallet-only
       });
 
       // 4. SAVE AUTH STATE
@@ -97,11 +100,9 @@ const RegisterPage = () => {
       localStorage.setItem('user', JSON.stringify(authRes.data.user));
 
       // 5. SAVE ENCRYPTED WALLET DATA (Local Only)
-      // This allows future login via passcode without re-entering seed
       localStorage.setItem(
         'wallet_encrypted',
         JSON.stringify({
-          email,
           address: wallet.address,
           encryptedSeed: encrypted.data,
           iv: encrypted.iv,
@@ -113,7 +114,7 @@ const RegisterPage = () => {
 
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      setError(err.response?.data?.message || err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -126,20 +127,18 @@ const RegisterPage = () => {
 
         <ProgressBar step={step} />
 
-        {/* STEP 1: IDENTITY */}
+        {/* STEP 1: INFO (Replaced Email) */}
         {step === 1 && (
           <div className="step-content">
-            <div className="input-group">
-              <label>Email (Optional)</label>
-              <input
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+            <div className="info-box" style={{ textAlign: 'center', padding: '1rem', background: '#1a1a2e', borderRadius: '8px', marginBottom: '1rem' }}>
+              <i className="fa-solid fa-shield-halved" style={{ fontSize: '2rem', marginBottom: '0.5rem', color: '#6c63ff' }}></i>
+              <h3 style={{ margin: '0.5rem 0' }}>Non-Custodial Security</h3>
+              <p className="text-muted" style={{ fontSize: '0.9rem' }}>
+                BlockVault never stores your private keys or seed phrases. You are the sole owner of your wallet.
+              </p>
             </div>
             <button className="btn-primary" onClick={nextStep}>
-              Continue
+              Create Wallet
             </button>
           </div>
         )}
@@ -148,14 +147,14 @@ const RegisterPage = () => {
         {step === 2 && (
           <div className="step-content">
             <div className="input-group">
-              <label>Create Passcode (6+ digits)</label>
+              <label>Create Passcode (6+ characters)</label>
               <input
                 type="password"
                 inputMode="numeric"
                 maxLength={12}
                 value={passcode}
                 onChange={(e) => setPasscode(e.target.value.replace(/\s/g, ''))}
-                placeholder="Enter a secure passcode"
+                placeholder="Encrypts your wallet locally"
                 autoFocus
               />
             </div>
@@ -184,18 +183,18 @@ const RegisterPage = () => {
             </button>
 
             <div className="verification-section">
-              <label>Verify Word #{seedPhrase[1]}</label>
+              <label>Verify Word #{2}</label>
               <input
                 value={confirm.w1}
-                onChange={(e) => setConfirm({ ...confirm, w1: e.target.value })}
-                placeholder={`Enter word #${seedPhrase[1]}`}
+                onChange={(e) => setConfirm({ ...confirm, w1: e.target.value.trim().toLowerCase() })}
+                placeholder={`Enter word #2`}
               />
 
-              <label>Verify Word #{seedPhrase[5]}</label>
+              <label>Verify Word #{6}</label>
               <input
                 value={confirm.w2}
-                onChange={(e) => setConfirm({ ...confirm, w2: e.target.value })}
-                placeholder={`Enter word #${seedPhrase[5]}`}
+                onChange={(e) => setConfirm({ ...confirm, w2: e.target.value.trim().toLowerCase() })}
+                placeholder={`Enter word #6`}
               />
             </div>
 
