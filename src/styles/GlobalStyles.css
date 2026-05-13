@@ -51,6 +51,7 @@ body {
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: var(--bg-dark);
@@ -66,6 +67,99 @@ body {
 ::selection {
   background: var(--primary-purple);
   color: white;
+}
+
+/* ==========================================
+   BUTTONS (Adjusted to prevent global override issues)
+   ========================================== */
+button {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text-main);
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+}
+
+.btn-primary, .btn-gold {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  background: var(--gradient-main);
+  color: white;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.25);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s ease;
+}
+
+.btn-primary:hover, .btn-gold:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+}
+
+.btn-primary:active, .btn-gold:active {
+  transform: scale(0.98);
+}
+
+.btn-primary:disabled, .btn-gold:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+
+.btn-gold-sm {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  background: var(--gradient-main);
+  color: white;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
+  transition: all 0.2s ease;
+}
+
+.btn-gold-sm:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.btn-gold-sm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary, .button-secondary, .btn-gold-outline {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover, .button-secondary:hover, .btn-gold-outline:hover:not(:disabled) {
+  border-color: var(--primary-purple);
+  color: var(--primary-purple);
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.btn-gold-outline:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ==========================================
@@ -90,7 +184,7 @@ body {
   border-radius: 24px;
   padding: 32px;
   box-shadow: var(--shadow-soft);
-  text-align: center; /* Center headers */
+  text-align: center;
   animation: fadeIn 0.4s ease-out;
 }
 
@@ -121,7 +215,6 @@ body {
   gap: 10px;
 }
 
-/* Link Style Button */
 .btn-text {
   background: transparent;
   border: none;
@@ -150,7 +243,6 @@ body {
   margin: 24px 0 32px 0;
 }
 
-/* The line connecting the dots */
 .progress-bar::before {
   content: '';
   position: absolute;
@@ -250,7 +342,6 @@ body {
   user-select: none;
 }
 
-/* Custom Checkbox Styling */
 input[type="checkbox"] {
   appearance: none;
   width: 20px;
@@ -306,9 +397,28 @@ input[type="checkbox"]:checked::after {
   border-bottom: 1px solid var(--border-color);
 }
 
+.header-left, .header-center, .header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+.header-left:hover, .header-right:hover {
+  color: var(--primary-purple);
+}
+
+.header-center h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
 .main-scroll-area-gold {
   flex: 1;
-  padding: 20px;
+  padding: 12px 0;
   max-width: 600px;
   width: 100%;
   margin: 0 auto;
@@ -356,6 +466,370 @@ input[type="checkbox"]:checked::after {
 .nav-item-gold.active .nav-icon-gold {
   transform: translateY(-2px);
   color: var(--primary-purple);
+}
+
+/* ==========================================
+   SEARCH & FILTERS
+   ========================================== */
+.search-bar-gold {
+  display: flex;
+  align-items: center;
+  margin: 12px 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 16px;
+  transition: border-color 0.2s ease;
+}
+
+.search-bar-gold:focus-within {
+  border-color: var(--primary-purple);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.search-bar-gold input {
+  background: transparent;
+  border: none;
+  flex: 1;
+  color: var(--text-main);
+  padding: 0;
+  margin: 0;
+  font-size: 14px;
+}
+
+.search-bar-gold input:focus {
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.filter-panel {
+  margin: 0 16px 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.filter-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  display: block;
+  font-weight: 600;
+}
+
+.filter-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.filter-btn {
+  padding: 4px 10px;
+  border-radius: 16px;
+  border: none;
+  font-size: 0.7rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  font-weight: 400;
+  transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.filter-btn.active {
+  background: var(--primary-purple);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Category Tabs */
+.category-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+
+.category-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.category-tab {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: none;
+  font-size: 0.75rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  font-weight: 400;
+  text-transform: capitalize;
+  transition: all 0.2s ease;
+}
+
+.category-tab:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.category-tab.active {
+  background: var(--primary-purple);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ==========================================
+   TRENDING & NFT MARKETPLACE
+   ========================================== */
+.trending-section {
+  margin-bottom: 20px;
+}
+
+.trending-title {
+  font-size: 0.9rem;
+  margin: 0 16px 8px;
+  color: var(--primary-purple);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.trending-scroll {
+  display: flex;
+  gap: 10px;
+  padding: 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.trending-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.trending-item {
+  min-width: 120px;
+  text-align: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.trending-item:hover {
+  transform: translateY(-2px);
+}
+
+.trending-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  margin: 0 auto 6px;
+  border: 2px solid rgba(139, 92, 246, 0.5);
+  transition: border-color 0.2s;
+}
+
+.trending-item:hover .trending-img {
+  border-color: var(--primary-purple);
+}
+
+.trending-name {
+  font-size: 0.7rem;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nft-grid-gold {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+  padding: 0 16px;
+}
+
+.nft-card-gold {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.nft-card-gold:hover {
+  border-color: var(--border-glow);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.nft-img-gold {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+}
+
+.nft-live-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--primary-purple);
+  color: #fff;
+  font-size: 0.6rem;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-weight: bold;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.nft-info-gold {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
+}
+
+.nft-title-gold {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 6px;
+}
+
+.nft-price-gold {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--primary-purple);
+}
+
+/* ==========================================
+   MODALS
+   ========================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-content {
+  background: #1a1a1e;
+  border-radius: 16px;
+  padding: 20px;
+  width: 90%;
+  max-width: 400px;
+  border: 1px solid var(--border-color);
+  animation: slideUp 0.3s ease;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--primary-purple);
+  font-size: 1.1rem;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+  width: auto;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.modal-close:hover {
+  color: var(--text-main);
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
+
+.modal-body {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.modal-body img {
+  width: 100px;
+  height: 100px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid var(--border-color);
+}
+
+.modal-info-collection {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.modal-info-name {
+  color: var(--text-main);
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.modal-info-price {
+  color: var(--primary-purple);
+  font-size: 1.2rem;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.modal-disclaimer {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+/* Pagination */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 0 16px;
+}
+
+.pagination-text {
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 /* ==========================================
@@ -417,58 +891,6 @@ input[type="checkbox"]:checked::after {
 
 input::placeholder, textarea::placeholder {
   color: rgba(255, 255, 255, 0.3);
-}
-
-/* ==========================================
-   BUTTONS
-   ========================================== */
-.btn-primary, button {
-  appearance: none;
-  border: none;
-  cursor: pointer;
-  width: 100%;
-  background: var(--gradient-main);
-  color: white;
-  border-radius: 14px;
-  padding: 16px;
-  font-size: 16px;
-  font-weight: 600;
-  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.25);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s ease;
-}
-
-.btn-primary:hover, button:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.1);
-  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
-}
-
-.btn-primary:active, button:active {
-  transform: scale(0.98);
-}
-
-.btn-primary:disabled, button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.btn-secondary, .button-secondary {
-  background: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
-  padding: 14px 20px;
-  border-radius: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  width: 100%;
-  transition: all 0.2s;
-}
-
-.btn-secondary:hover, .button-secondary:hover {
-  border-color: var(--primary-purple);
-  color: var(--primary-purple);
-  background: rgba(139, 92, 246, 0.05);
 }
 
 /* ==========================================
