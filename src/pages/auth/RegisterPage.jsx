@@ -75,9 +75,26 @@ const RegisterPage = () => {
       const wallet = ethers.Wallet.fromPhrase(phraseString);
 
       // 3. BACKEND AUTHENTICATION (Nonce -> Sign -> Verify)
-      const nonceRes = await axios.post(`${API_BASE_URL}/auth/nonce`, {
-        walletAddress: wallet.address
-      });
+      // Includes 503 retry logic for Railway cold starts
+      let nonceRes;
+      let retries = 5;
+      
+      while (retries > 0) {
+        try {
+          nonceRes = await axios.post(`${API_BASE_URL}/auth/nonce`, {
+            walletAddress: wallet.address
+          });
+          break; // Success — exit retry loop
+        } catch (err) {
+          if (err.response?.status === 503 && retries > 1) {
+            console.log('Server is initializing, retrying in 1s...');
+            await new Promise(res => setTimeout(res, 1000));
+            retries--;
+          } else {
+            throw err; // Not a 503, or out of retries — throw
+          }
+        }
+      }
 
       // CRITICAL FIX: Expect the backend to return the actual message containing the nonce.
       const messageToSign = nonceRes.data.messageToSign || nonceRes.data.message;
@@ -114,7 +131,14 @@ const RegisterPage = () => {
 
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || err.message || 'Registration failed. Please try again.');
+      
+      if (err.response?.status === 503) {
+        setError('Server is still starting up. Please wait a moment and try again.');
+      } else if (err.message === 'Network Error') {
+        setError('Network error — check your connection or CORS settings.');
+      } else {
+        setError(err.response?.data?.message || err.message || 'Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
