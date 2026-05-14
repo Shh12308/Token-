@@ -1,10 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { faSearch, faFilter, faArrowLeft, faHeart, faExternalLinkAlt, faTag, faClock, faFire, faGem } from '@fortawesome/free-solid-svg-icons';
+import { ethers } from 'ethers';
+import { 
+  faSearch, faFilter, faArrowLeft, faHeart, faExternalLinkAlt, 
+  faTag, faClock, faFire, faGem, faLock, faExclamationTriangle 
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { getWalletFromVault } from '../utils/keyManager';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
+
+const CHAIN_LABELS = {
+  ethereum: 'Ethereum', polygon: 'Polygon', bsc: 'BSC',
+  arbitrum: 'Arbitrum', optimism: 'Optimism', base: 'Base',
+};
 
 const NFTBrowsePage = () => {
   const navigate = useNavigate();
@@ -23,8 +33,15 @@ const NFTBrowsePage = () => {
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [buying, setBuying] = useState(false);
 
+  // ── Independent Vault Signing State ─────────────────
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [vaultPassword, setVaultPassword] = useState('');
+  const [signError, setSignError] = useState('');
+  const [pendingAction, setPendingAction] = useState(null); // stores { listingId, unsignedTx, transactionId }
+
   const categories = ['all', 'art', 'gaming', 'music', 'photography', 'pfp', 'collectibles'];
 
+  // ── Fetch NFTs ──────────────────────────────────────
   const fetchExplore = useCallback(async (resetPage = false) => {
     setLoading(true);
     const currentPage = resetPage ? 1 : page;
@@ -55,24 +72,20 @@ const NFTBrowsePage = () => {
     }
   }, [search, activeCategory, activeChain, sortBy, page]);
 
+  useEffect(() => { fetchExplore(); }, [activeChain, sortBy, activeCategory, page]);
   useEffect(() => {
-    fetchExplore();
-  }, [activeChain, sortBy, activeCategory, page]);
-
-  useEffect(() => {
-    const delay = setTimeout(() => {
-      if (search !== undefined) fetchExplore(true);
-    }, 500);
+    const delay = setTimeout(() => { if (search !== undefined) fetchExplore(true); }, 500);
     return () => clearTimeout(delay);
   }, [search]);
 
-  const handleBuyNFT = async (listingId) => {
+  // ── Step 1: Request unsigned transaction from backend ──
+  const requestBuyNFT = async (listingId) => {
     setBuying(true);
     try {
       const token = localStorage.getItem('authToken');
       if (!token) {
-        alert('Please connect your wallet first');
-        navigate('/app/connect');
+        alert('Please log in first');
+        navigate('/auth/login');
         return;
       }
 
@@ -82,41 +95,88 @@ const NFTBrowsePage = () => {
 
       const { unsignedTransaction, transaction } = res.data;
 
-      if (unsignedTransaction && window.ethereum) {
-        try {
-          // Send to MetaMask for signing
-          const txHash = await window.ethereum.request({
-            method: 'eth_sendTransaction',
-            params: [unsignedTransaction],
-          });
-
-          // Broadcast the signed transaction
-          await axios.post(`${API_BASE}/nft/broadcast`, {
-            transactionId: transaction.id,
-            txHash,
-          }, { headers: { Authorization: `Bearer ${token}` } });
-
-          alert(`Transaction submitted! Hash: ${txHash}`);
-          setShowBuyModal(false);
-          setSelectedNFT(null);
-          fetchExplore();
-        } catch (metaMaskErr) {
-          if (metaMaskErr.code === 4001) {
-            alert('Transaction rejected by user');
-          } else {
-            alert(`MetaMask error: ${metaMaskErr.message}`);
-          }
-        }
-      } else if (!window.ethereum) {
-        alert('Please install MetaMask to buy NFTs');
+      if (unsignedTransaction) {
+        // Store the pending action and ask for vault password
+        setPendingAction({
+          listingId,
+          unsignedTransaction,
+          transactionId: transaction.id,
+        });
+        setShowBuyModal(false);
+        setShowPasswordModal(true);
+        setVaultPassword('');
+        setSignError('');
       } else {
         alert('Purchase recorded! (Off-chain settlement)');
         setShowBuyModal(false);
         fetchExplore();
       }
     } catch (err) {
-      console.error('Buy error:', err);
-      alert(err.response?.data?.message || 'Error purchasing NFT');
+      console.error('Buy request error:', err);
+      alert(err.response?.data?.message || 'Error preparing purchase');
+    } finally {
+      setBuying(false);
+    }
+  };
+
+  // ── Step 2: Decrypt vault & sign transaction locally ────
+  const handleSignAndBroadcast = async () => {
+    if (!vaultPassword || !pendingAction) return;
+    setSignError('');
+    setBuying(true);
+
+    try {
+      const { unsignedTransaction, transactionId } = pendingAction;
+      
+      // 1. Get the user's wallet address from backend
+      const token = localStorage.getItem('authToken');
+      const walletRes = await axios.get(`${API_BASE}/wallets`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const primaryWallet = walletRes.data.wallets?.find(w => w.blockchain === 'ethereum') || walletRes.data.wallets?.[0];
+      if (!primaryWallet) throw new Error('No wallet found');
+
+      // 2. Decrypt private key from local vault
+      let wallet;
+      try {
+        wallet = await getWalletFromVault(primaryWallet.address, vaultPassword);
+      } catch (vaultErr) {
+        throw new Error('Incorrect password. Please try again.');
+      }
+
+      // 3. Connect wallet to provider for signing
+      const rpcUrl = process.env.REACT_APP_ETH_RPC_URL || 'https://eth-mainnet.g.alchemy.com/v2/demo';
+      const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      const connectedWallet = wallet.connect(provider);
+
+      // 4. Sign the transaction locally (this is the MetaMask replacement)
+      const tx = await connectedWallet.sendTransaction({
+        to: unsignedTransaction.to,
+        value: unsignedTransaction.value,
+        data: unsignedTransaction.data || '0x',
+        gasLimit: unsignedTransaction.gasLimit || undefined,
+        gasPrice: unsignedTransaction.gasPrice || undefined,
+        nonce: unsignedTransaction.nonce || undefined,
+        chainId: unsignedTransaction.chainId || 1,
+      });
+
+      // 5. Broadcast confirmation to backend
+      await axios.post(`${API_BASE}/nft/broadcast`, {
+        transactionId,
+        txHash: tx.hash,
+      }, { headers: { Authorization: `Bearer ${token}` } });
+
+      // 6. Success
+      setShowPasswordModal(false);
+      setPendingAction(null);
+      setVaultPassword('');
+      alert(`Transaction submitted! Hash: ${tx.hash}`);
+      fetchExplore();
+
+    } catch (err) {
+      console.error('Sign/broadcast error:', err);
+      setSignError(err.message || 'Failed to sign transaction');
     } finally {
       setBuying(false);
     }
@@ -162,27 +222,24 @@ const NFTBrowsePage = () => {
             <div style={{ marginBottom: '8px' }}>
               <label style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '4px', display: 'block' }}>Blockchain</label>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {['all', 'ethereum', 'polygon', 'bsc', 'arbitrum', 'optimism', 'base'].map(chain => (
+                {['ethereum', 'polygon', 'bsc', 'arbitrum', 'optimism', 'base'].map(chain => (
                   <button
                     key={chain}
                     onClick={() => setActiveChain(chain)}
                     style={{
-                      padding: '4px 10px',
-                      borderRadius: '16px',
-                      border: 'none',
-                      fontSize: '0.7rem',
-                      cursor: 'pointer',
+                      padding: '4px 10px', borderRadius: '16px', border: 'none',
+                      fontSize: '0.7rem', cursor: 'pointer',
                       background: activeChain === chain ? '#d4af37' : 'rgba(255,255,255,0.1)',
                       color: activeChain === chain ? '#000' : '#ccc',
                       fontWeight: activeChain === chain ? 600 : 400,
                     }}
                   >
-                    {chain === 'all' ? 'All' : SUPPORTED_CHAINS_LABELS[chain] || chain}
+                    {CHAIN_LABELS[chain] || chain}
                   </button>
                 ))}
               </div>
             </div>
-            <div style={{ marginBottom: '8px' }}>
+            <div>
               <label style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '4px', display: 'block' }}>Sort By</label>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 {[
@@ -195,11 +252,8 @@ const NFTBrowsePage = () => {
                     key={s.key}
                     onClick={() => setSortBy(s.key)}
                     style={{
-                      padding: '4px 10px',
-                      borderRadius: '16px',
-                      border: 'none',
-                      fontSize: '0.7rem',
-                      cursor: 'pointer',
+                      padding: '4px 10px', borderRadius: '16px', border: 'none',
+                      fontSize: '0.7rem', cursor: 'pointer',
                       background: sortBy === s.key ? '#d4af37' : 'rgba(255,255,255,0.1)',
                       color: sortBy === s.key ? '#000' : '#ccc',
                     }}
@@ -219,11 +273,8 @@ const NFTBrowsePage = () => {
               key={cat}
               onClick={() => setActiveCategory(cat)}
               style={{
-                padding: '6px 14px',
-                borderRadius: '20px',
-                border: 'none',
-                fontSize: '0.75rem',
-                cursor: 'pointer',
+                padding: '6px 14px', borderRadius: '20px', border: 'none',
+                fontSize: '0.75rem', cursor: 'pointer',
                 background: activeCategory === cat ? '#d4af37' : 'rgba(255,255,255,0.08)',
                 color: activeCategory === cat ? '#000' : '#aaa',
                 fontWeight: activeCategory === cat ? 600 : 400,
@@ -246,15 +297,14 @@ const NFTBrowsePage = () => {
                 <div
                   key={col.address || i}
                   onClick={() => setSearch(col.name)}
-                  style={{
-                    minWidth: '120px',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                  }}
+                  style={{ minWidth: '120px', textAlign: 'center', cursor: 'pointer', flexShrink: 0 }}
                 >
                   <div style={{
-                    width: '72px', height: '72px', borderRadius: '50%', backgroundImage: `url(${col.image})`, backgroundSize: 'cover', backgroundPosition: 'center', margin: '0 auto 6px', border: '2px solid rgba(212, 175, 55, 0.5)' }}></div>
+                    width: '72px', height: '72px', borderRadius: '50%',
+                    backgroundImage: `url(${col.image})`, backgroundSize: 'cover',
+                    backgroundPosition: 'center', margin: '0 auto 6px',
+                    border: '2px solid rgba(212, 175, 55, 0.5)',
+                  }}></div>
                   <div style={{ fontSize: '0.7rem', color: '#eee', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {col.name}
                   </div>
@@ -266,28 +316,28 @@ const NFTBrowsePage = () => {
 
         {/* NFT Grid */}
         {loading ? (
-          <div className="text-center p-4" style={{ color: '#aaa' }}>Loading NFTs...</div>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#aaa' }}>Loading NFTs...</div>
         ) : nfts.length === 0 ? (
-          <div className="text-center p-4" style={{ color: '#aaa' }}>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#aaa' }}>
             No NFTs found. Try adjusting your filters.
           </div>
         ) : (
           <div className="nft-grid-gold">
             {nfts.map((nft) => (
-              <div 
-                className="nft-card-gold" 
-                key={nft.id} 
+              <div
+                className="nft-card-gold"
+                key={nft.id}
                 onClick={() => { setSelectedNFT(nft); setShowBuyModal(true); }}
               >
-                <div 
-                  className="nft-img-gold" 
+                <div
+                  className="nft-img-gold"
                   style={{ backgroundImage: `url(${nft.image || `https://picsum.photos/seed/${nft.id}/200/200`})` }}
                 >
                   {nft.source === 'alchemy' && (
-                    <span style={{ 
-                      position: 'absolute', top: '6px', right: '6px', 
-                      background: '#d4af37', color: '#000', fontSize: '0.6rem', 
-                      padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold' 
+                    <span style={{
+                      position: 'absolute', top: '6px', right: '6px',
+                      background: '#d4af37', color: '#000', fontSize: '0.6rem',
+                      padding: '2px 6px', borderRadius: '8px', fontWeight: 'bold',
                     }}>
                       LIVE
                     </span>
@@ -303,9 +353,9 @@ const NFTBrowsePage = () => {
                       {nft.price ? `${formatPrice(nft.price)} ${nft.currency || 'ETH'}` : 'Not Listed'}
                     </div>
                     {nft.price && (
-                      <button 
-                        className="btn-gold-sm" 
-                        onClick={(e) => { e.stopPropagation(); handleBuyNFT(nft.id); }}
+                      <button
+                        className="btn-gold-sm"
+                        onClick={(e) => { e.stopPropagation(); requestBuyNFT(nft.id); }}
                         disabled={buying}
                       >
                         Buy
@@ -321,52 +371,42 @@ const NFTBrowsePage = () => {
         {/* Pagination */}
         {pagination.pages > 1 && (
           <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '20px', padding: '0 16px' }}>
-            <button 
-              className="btn-gold-outline" 
-              disabled={page === 1} 
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-            >
+            <button className="btn-gold-outline" disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
               Previous
             </button>
             <span style={{ color: '#aaa', alignSelf: 'center', fontSize: '0.85rem' }}>
               Page {page} of {pagination.pages}
             </span>
-            <button 
-              className="btn-gold-outline" 
-              disabled={page === pagination.pages} 
-              onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
-            >
+            <button className="btn-gold-outline" disabled={page === pagination.pages} onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}>
               Next
             </button>
           </div>
         )}
       </main>
 
-      {/* Buy Modal */}
+      {/* ═══════════════════════════════════════════════════════
+          BUY MODAL - Shows NFT details, then requests signature
+          ═══════════════════════════════════════════════════════ */}
       {showBuyModal && selectedNFT && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-          background: 'rgba(0,0,0,0.7)', display: 'flex', 
-          justifyContent: 'center', alignItems: 'center', zIndex: 1000
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000,
         }} onClick={() => setShowBuyModal(false)}>
           <div style={{
-            background: '#1a1a1a', borderRadius: '16px', padding: '20px', 
-            width: '90%', maxWidth: '400px', border: '1px solid #333'
+            background: '#1a1a1a', borderRadius: '16px', padding: '20px',
+            width: '90%', maxWidth: '400px', border: '1px solid #333',
           }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, color: '#d4af37' }}>Purchase NFT</h3>
-              <button 
-                onClick={() => setShowBuyModal(false)} 
-                style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}
-              >
+              <button onClick={() => setShowBuyModal(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>
                 &times;
               </button>
             </div>
             <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-              <img 
-                src={selectedNFT.image || `https://picsum.photos/seed/${selectedNFT.id}/150/150`} 
-                alt={selectedNFT.name} 
-                style={{ width: '100px', height: '100px', borderRadius: '12px', objectFit: 'cover' }} 
+              <img
+                src={selectedNFT.image || `https://picsum.photos/seed/${selectedNFT.id}/150/150`}
+                alt={selectedNFT.name}
+                style={{ width: '100px', height: '100px', borderRadius: '12px', objectFit: 'cover' }}
               />
               <div>
                 <div style={{ color: '#888', fontSize: '0.8rem' }}>{selectedNFT.collectionName}</div>
@@ -378,17 +418,147 @@ const NFTBrowsePage = () => {
                 )}
               </div>
             </div>
-            <button 
-              className="btn-gold" 
+            <button
+              className="btn-gold"
               style={{ width: '100%', padding: '12px', fontSize: '1rem' }}
-              onClick={() => handleBuyNFT(selectedNFT.id)}
+              onClick={() => requestBuyNFT(selectedNFT.id)}
               disabled={buying || !selectedNFT.price}
             >
-              {buying ? 'Confirming in Wallet...' : (selectedNFT.price ? `Buy for ${formatPrice(selectedNFT.price)} ${selectedNFT.currency || 'ETH'}` : 'Not for sale')}
+              {buying ? 'Preparing...' : (selectedNFT.price ? `Buy for ${formatPrice(selectedNFT.price)} ${selectedNFT.currency || 'ETH'}` : 'Not for sale')}
             </button>
             <p style={{ fontSize: '0.7rem', color: '#666', marginTop: '8px', textAlign: 'center' }}>
-              🔐 Non-custodial: You will sign this transaction securely via MetaMask. We never hold your funds.
+              🔐 Non-custodial: Signed locally with your BlockVault key. We never hold your funds.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════
+          PASSWORD MODAL - Replaces MetaMask popup!
+          User enters vault password to decrypt key & sign tx
+          ═══════════════════════════════════════════════════════ */}
+      {showPasswordModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1001,
+        }}>
+          <div style={{
+            background: '#111', borderRadius: '16px', padding: '24px',
+            width: '90%', maxWidth: '380px', border: '1px solid #d4af37',
+          }}>
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: '50%',
+                background: 'rgba(212,175,55,0.15)', margin: '0 auto 12px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <FontAwesomeIcon icon={faLock} style={{ color: '#d4af37', fontSize: 22 }} />
+              </div>
+              <h3 style={{ margin: '0 0 4px', color: '#fff', fontSize: 18 }}>Sign Transaction</h3>
+              <p style={{ margin: 0, color: '#888', fontSize: 13 }}>
+                Enter your wallet password to sign securely
+              </p>
+            </div>
+
+            {/* Transaction details */}
+            {pendingAction && (
+              <div style={{
+                background: '#1a1a1a', borderRadius: 10, padding: 14,
+                marginBottom: 16, border: '1px solid #333',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ color: '#888', fontSize: 12 }}>Network</span>
+                  <span style={{ color: '#fff', fontSize: 12 }}>Ethereum Mainnet</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ color: '#888', fontSize: 12 }}>Type</span>
+                  <span style={{ color: '#d4af37', fontSize: 12 }}>NFT Purchase</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#888', fontSize: 12 }}>To</span>
+                  <span style={{ color: '#fff', fontSize: 12, fontFamily: 'monospace' }}>
+                    {pendingAction.unsignedTransaction?.to?.slice(0, 10)}...
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Security notice */}
+            <div style={{
+              background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)',
+              borderRadius: 8, padding: '10px 12px', marginBottom: 16,
+            }}>
+              <p style={{ color: '#4ade80', fontSize: 11, margin: 0, lineHeight: 1.5 }}>
+                <FontAwesomeIcon icon={faLock} style={{ marginRight: 6 }} />
+                Your private key is decrypted locally and never leaves this device. This replaces MetaMask.
+              </p>
+            </div>
+
+            {/* Error display */}
+            {signError && (
+              <div style={{
+                background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.3)',
+                borderRadius: 8, padding: '10px 12px', marginBottom: 12,
+              }}>
+                <p style={{ color: '#f87171', fontSize: 12, margin: 0 }}>
+                  <FontAwesomeIcon icon={faExclamationTriangle} style={{ marginRight: 6 }} />
+                  {signError}
+                </p>
+              </div>
+            )}
+
+            {/* Password input */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ color: '#aaa', fontSize: 12, marginBottom: 6, display: 'block' }}>
+                Wallet Password
+              </label>
+              <input
+                type="password"
+                value={vaultPassword}
+                onChange={(e) => setVaultPassword(e.target.value)}
+                placeholder="Enter your BlockVault password"
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSignAndBroadcast(); }}
+                style={{
+                  width: '100%', padding: '14px 16px', background: '#1a1a1a',
+                  border: '1px solid #333', borderRadius: 10, color: '#fff',
+                  fontSize: 14, outline: 'none',
+                }}
+              />
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPendingAction(null);
+                  setVaultPassword('');
+                  setSignError('');
+                }}
+                style={{
+                  flex: 1, padding: 14, background: 'transparent',
+                  border: '1px solid #444', borderRadius: 10,
+                  color: '#aaa', cursor: 'pointer', fontSize: 14,
+                }}
+              >
+                Reject
+              </button>
+              <button
+                onClick={handleSignAndBroadcast}
+                disabled={buying || !vaultPassword}
+                style={{
+                  flex: 1, padding: 14, background: (buying || !vaultPassword) ? '#555' : '#d4af37',
+                  border: 'none', borderRadius: 10,
+                  color: (buying || !vaultPassword) ? '#999' : '#000',
+                  cursor: (buying || !vaultPassword) ? 'not-allowed' : 'pointer',
+                  fontSize: 14, fontWeight: 600,
+                }}
+              >
+                {buying ? 'Signing...' : 'Sign & Send'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -397,7 +567,7 @@ const NFTBrowsePage = () => {
         <div className="nav-item-gold" onClick={() => navigate('/app')}>
           <span>Wallet</span>
         </div>
-        <div className={`nav-item-gold active`} onClick={() => navigate('/app/nft-market')}>
+        <div className="nav-item-gold active" onClick={() => navigate('/app/nft-market')}>
           <span>NFTs</span>
         </div>
         <div className="nav-item-gold" onClick={() => navigate('/app/staking')}>
@@ -406,15 +576,6 @@ const NFTBrowsePage = () => {
       </nav>
     </div>
   );
-};
-
-const SUPPORTED_CHAINS_LABELS = {
-  ethereum: 'Ethereum',
-  polygon: 'Polygon',
-  bsc: 'BSC',
-  arbitrum: 'Arbitrum',
-  optimism: 'Optimism',
-  base: 'Base',
 };
 
 export default NFTBrowsePage;
