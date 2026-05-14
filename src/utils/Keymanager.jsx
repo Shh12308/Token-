@@ -23,6 +23,33 @@ export const registerVault = async (email, password) => {
   return wallet;
 };
 
+export const saveWalletToVault = async (privateKey, password) => {
+  try {
+    const wallet = new ethers.Wallet(privateKey);
+    const encryptedJson = await wallet.encrypt(password);
+    
+    let vault = JSON.parse(localStorage.getItem(VAULT_KEY) || '[]');
+    
+    // Avoid duplicates
+    if (vault.find(v => v.address === wallet.address)) {
+      throw new Error('Wallet already in vault');
+    }
+
+    vault.push({
+      address: wallet.address,
+      encrypted: encryptedJson,
+    });
+
+    localStorage.setItem(VAULT_KEY, JSON.stringify(vault));
+    return wallet.address;
+  } catch (error) {
+    console.error('Vault save error:', error);
+    throw error;
+  }
+};
+
+
+
 export const loginVault = async (email, password) => {
   const res = await axios.post(`${API_BASE}/auth/login`, {
     email, password
