@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ethers } from 'ethers';
-import { decryptData, deriveKeyFromPasscode, isBiometricAvailable } from '../../utils/wallet';
+import { decryptData, deriveKeyFromPasscode, isBiometricAvailable, unlockLocalVault } from '../../utils/wallet';
 import { faKey, faShieldHalved, faFingerprint } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
