@@ -1,85 +1,253 @@
-// src/utils/wallet.js
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { ethers } from 'ethers';
 
-// --- Helpers for Base64 <-> ArrayBuffer conversion ---
-const ab2b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
-const b642ab = (base64) => {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-  return bytes.buffer;
-};
+import {
+  generateSeedPhrase,
+  copyToClipboard,
+  deriveKeyFromPasscode,
+  encryptData
+} from '../../utils/wallet';
 
-// --- Core Cryptographic Functions ---
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
-export const generateSeedPhrase = () => {
-  return ethers.Wallet.createRandom().mnemonic.phrase.split(' ');
-};
+const ProgressBar = ({ step }) => (
+  <div className="progress-bar">
+    <div className={`progress-step ${step >= 1 ? 'active' : ''}`}>1. Get Started</div>
+    <div className={`progress-step ${step >= 2 ? 'active' : ''}`}>2. Security</div>
+    <div className={`progress-step ${step >= 3 ? 'active' : ''}`}>3. Secret Key</div>
+  </div>
+);
 
-export const copyToClipboard = (text) => {
-  navigator.clipboard.writeText(text);
-};
+const SeedPhraseGrid = ({ phrase }) => (
+  <div className="seed-phrase-grid">
+    {phrase.map((word, i) => (
+      <div key={i} className="seed-word" onClick={() => copyToClipboard(word)}>
+        {i + 1}. {word}
+      </div>
+    ))}
+  </div>
+);
 
-export const isBiometricAvailable = () => {
-  // Checks if device supports WebAuthn (FaceID / Fingerprint)
-  return !!window.PublicKeyCredential;
-};
+const RegisterPage = () => {
+  const navigate = useNavigate();
 
-/**
- * Derives a 256-bit AES-GCM encryption key from a user's passcode using PBKDF2.
- * This ensures the passcode itself is never stored or sent anywhere.
- */
-export const deriveKeyFromPasscode = async (passcode) => {
-  const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    enc.encode(passcode),
-    'PBKDF2',
-    false,
-    ['deriveBits', 'deriveKey']
-  );
-  
-  return crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: enc.encode('BlockVault-E2EE-Salt-V1'), // Static salt for client-side vault
-      iterations: 600000, // High iteration count to resist brute force
-      hash: 'SHA-256'
-    },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-};
+  const [step, setStep] = useState(1);
+  const [passcode, setPasscode] = useState('');
+  const [seedPhrase, setSeedPhrase] = useState([]);
+  const [confirm, setConfirm] = useState({ w1: '', w2: '' });
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-/**
- * Encrypts the seed phrase using the derived AES key.
- * Returns the ciphertext and the Initialization Vector (IV) needed for decryption.
- */
-export const encryptData = async (data, key) => {
-  const enc = new TextEncoder();
-  const iv = crypto.getRandomValues(new Uint8Array(12)); // AES-GCM standard IV size
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    enc.encode(data)
-  );
-  return {
-    data: ab2b64(encrypted),
-    iv: ab2b64(iv)
+  // Generate seed only when we reach step 3
+  useEffect(() => {
+    if (step === 3 && seedPhrase.length === 0) {
+      setSeedPhrase(generateSeedPhrase());
+    }
+  }, [step]);
+
+  // Validation helper
+  const verifySeed = () =>
+    seedPhrase[1] === confirm.w1 && seedPhrase[5] === confirm.w2;
+
+  const nextStep = () => setStep((s) => Math.min(s + 1, 3));
+
+  const handleCreateAccount = async () => {
+    // Validation
+    if (!saved) return setError('Please confirm you have saved your seed phrase.');
+    if (passcode.length < 6) return setError('Passcode must be at least 6 characters.');
+    if (!verifySeed()) return setError('Seed verification words do not match.');
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const phraseString = seedPhrase.join(' ');
+
+      // 1. ENCRYPT LOCALLY (Custody stays with user)
+      const key = await deriveKeyFromPasscode(passcode);
+      const encrypted = await encryptData(phraseString, key);
+
+      // 2. DERIVE WALLET
+      const wallet = ethers.Wallet.fromPhrase(phraseString);
+
+      // 3. BACKEND AUTHENTICATION (Nonce -> Sign -> Verify)
+      // Includes 503 retry logic for Railway cold starts
+      let nonceRes;
+      let retries = 5;
+      
+      while (retries > 0) {
+        try {
+          nonceRes = await axios.post(`${API_BASE_URL}/auth/nonce`, {
+            walletAddress: wallet.address
+          });
+          break; // Success — exit retry loop
+        } catch (err) {
+          if (err.response?.status === 503 && retries > 1) {
+            console.log('Server is initializing, retrying in 1s...');
+            await new Promise(res => setTimeout(res, 1000));
+            retries--;
+          } else {
+            throw err; // Not a 503, or out of retries — throw
+          }
+        }
+      }
+
+      // CRITICAL FIX: Expect the backend to return the actual message containing the nonce.
+      const messageToSign = nonceRes.data.messageToSign || nonceRes.data.message;
+      
+      if (!messageToSign || messageToSign === 'ok') {
+        throw new Error("Authentication setup error: Backend did not return a valid message to sign.");
+      }
+
+      const signature = await wallet.signMessage(messageToSign);
+
+      const authRes = await axios.post(`${API_BASE_URL}/auth/verify`, {
+        walletAddress: wallet.address,
+        signature,
+        message: messageToSign,
+        walletType: 'created' // Removed email, DB is wallet-only
+      });
+
+      // 4. SAVE AUTH STATE
+      localStorage.setItem('authToken', authRes.data.token);
+      localStorage.setItem('user', JSON.stringify(authRes.data.user));
+
+      // 5. SAVE ENCRYPTED WALLET DATA (Local Only)
+      localStorage.setItem(
+        'wallet_encrypted',
+        JSON.stringify({
+          address: wallet.address,
+          encryptedSeed: encrypted.data,
+          iv: encrypted.iv,
+          createdAt: new Date().toISOString()
+        })
+      );
+
+      navigate('/home');
+
+    } catch (err) {
+      console.error(err);
+      
+      if (err.response?.status === 503) {
+        setError('Server is still starting up. Please wait a moment and try again.');
+      } else if (err.message === 'Network Error') {
+        setError('Network error — check your connection or CORS settings.');
+      } else {
+        setError(err.response?.data?.message || err.message || 'Registration failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <h2>Create New Wallet</h2>
+
+        <ProgressBar step={step} />
+
+        {/* STEP 1: INFO (Replaced Email) */}
+        {step === 1 && (
+          <div className="step-content">
+            <div className="info-box" style={{ textAlign: 'center', padding: '1rem', background: '#1a1a2e', borderRadius: '8px', marginBottom: '1rem' }}>
+              <i className="fa-solid fa-shield-halved" style={{ fontSize: '2rem', marginBottom: '0.5rem', color: '#6c63ff' }}></i>
+              <h3 style={{ margin: '0.5rem 0' }}>Non-Custodial Security</h3>
+              <p className="text-muted" style={{ fontSize: '0.9rem' }}>
+                BlockVault never stores your private keys or seed phrases. You are the sole owner of your wallet.
+              </p>
+            </div>
+            <button className="btn-primary" onClick={nextStep}>
+              Create Wallet
+            </button>
+          </div>
+        )}
+
+        {/* STEP 2: SECURITY */}
+        {step === 2 && (
+          <div className="step-content">
+            <div className="input-group">
+              <label>Create Passcode (6+ characters)</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={12}
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value.replace(/\s/g, ''))}
+                placeholder="Encrypts your wallet locally"
+                autoFocus
+              />
+            </div>
+            <button 
+              className="btn-primary" 
+              disabled={passcode.length < 6} 
+              onClick={nextStep}
+            >
+              Set Passcode
+            </button>
+          </div>
+        )}
+
+        {/* STEP 3: SECRET KEY */}
+        {step === 3 && (
+          <div className="step-content">
+            <h3>Backup Seed Phrase</h3>
+            <p className="text-muted">
+              Never share this phrase with anyone. We cannot recover it for you.
+            </p>
+
+            <SeedPhraseGrid phrase={seedPhrase} />
+
+            <button className="btn-secondary" onClick={() => copyToClipboard(seedPhrase.join(' '))}>
+              <i className="fa-regular fa-copy"></i> Copy to Clipboard
+            </button>
+
+            <div className="verification-section">
+              <label>Verify Word #{2}</label>
+              <input
+                value={confirm.w1}
+                onChange={(e) => setConfirm({ ...confirm, w1: e.target.value.trim().toLowerCase() })}
+                placeholder={`Enter word #2`}
+              />
+
+              <label>Verify Word #{6}</label>
+              <input
+                value={confirm.w2}
+                onChange={(e) => setConfirm({ ...confirm, w2: e.target.value.trim().toLowerCase() })}
+                placeholder={`Enter word #6`}
+              />
+            </div>
+
+            <div className="checkbox-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={saved}
+                  onChange={(e) => setSaved(e.target.checked)}
+                />
+                <span>I have safely stored my seed phrase</span>
+              </label>
+            </div>
+
+            {error && <div className="error-msg">{error}</div>}
+
+            <button
+              className="btn-primary"
+              disabled={!saved || loading}
+              onClick={handleCreateAccount}
+              style={{ marginTop: '1rem' }}
+            >
+              {loading ? 'Creating Account...' : 'Create Wallet'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
-/**
- * Decrypts the seed phrase using the derived key and stored IV.
- */
-export const decryptData = async (encryptedData, key, iv) => {
-  const decrypted = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: b642ab(iv) },
-    key,
-    b642ab(encryptedData)
-  );
-  const dec = new TextDecoder();
-  return dec.decode(decrypted);
-};
+export default RegisterPage;
