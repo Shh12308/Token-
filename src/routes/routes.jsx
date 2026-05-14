@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 
 // --- PAGES ---
 import Home from '../pages/Home';
+import AssetPage from '../pages/AssetPage';
 import ImportWalletPage from '../pages/Importwallet';
 import CreateWalletPage from '../pages/Createwalletpage';
 import Staking from '../pages/Staking';
@@ -38,7 +39,7 @@ const AppRoutes = () => {
         <Route path="/buy" element={<BuyPage />} />
         <Route path="/app/wallets/import" element={<ImportWalletPage />} />
 <Route path="/app/wallets/create" element={<CreateWalletPage />} />
-                                            
+                       <Route path="/app/assets" element={<AssetPage />} />                     
         <Route path="/send" element={<SendPage />} />
         <Route path="/receive" element={<ReceivePage />} />
         <Route path="/nft" element={<NFTBrowsePage />} />
