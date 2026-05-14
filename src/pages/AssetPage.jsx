@@ -57,9 +57,9 @@ const AssetPage = () => {
 
     try {
       // 1. Get Balance & Price
-      const balRes = await axios.get(${API_BASE}/balances, (
-        headers: { Authorization: Bearer ${token} },
-      });
+      const balRes = await axios.get(`${API_BASE}/balances`, {
+  headers: { Authorization: `Bearer ${token}` },
+});
 
       const assetInfo = (balRes.data.assets || []).find(
         a => a.symbol?.toLowerCase() === normalizedSymbol
