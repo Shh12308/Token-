@@ -88,10 +88,10 @@ const AssetPage = () => {
       }
 
       // 3. Get Transactions
-      const txRes = await axios.get(${API_BASE}/transactions, {
-        headers: { Authorization: Bearer ${token} },
-        params: { limit: 10 },
-      });
+      const txRes = await axios.get(`${API_BASE}/transactions`, {
+  headers: { Authorization: `Bearer ${token}` },
+  params: { limit: 10 },
+});
 
       const assetTxs = (txRes.data.transactions || []).filter(
         tx => tx.asset?.toLowerCase() === normalizedSymbol
@@ -117,7 +117,7 @@ const AssetPage = () => {
 
   return (
     <div className="dashboard-container-gold">
-      {/* Header /}
+      
       <header className="top-header-gold">
         <div className="header-left" onClick={() => navigate('/app')}>
           <FontAwesomeIcon icon={faArrowLeft} /> Back
