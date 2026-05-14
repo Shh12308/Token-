@@ -36,8 +36,8 @@ const AppRoutes = () => {
         <Route path="/stake" element={<Staking />} />
         <Route path="/kyc" element={<KYCPage />} />
         <Route path="/buy" element={<BuyPage />} />
-        <Route path="/app/wallets/import" element={<Importwalletpage />} />
-<Route path="/app/wallets/create" element={<Createwallet />} />
+        <Route path="/app/wallets/import" element={<Importwallet />} />
+<Route path="/app/wallets/create" element={<Createwalletpage />} />
         <Route path="/send" element={<SendPage />} />
         <Route path="/receive" element={<ReceivePage />} />
         <Route path="/nft" element={<NFTBrowsePage />} />
