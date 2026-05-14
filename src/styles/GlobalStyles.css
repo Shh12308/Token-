@@ -10,8 +10,9 @@
 
   /* Brand Colors */
   --primary-gold: #f59e0b;
-  --primary-orange: #d97706;
+  --primary-orange: #ea580c;
   --accent-blue: #38bdf8;
+  --accent-bright-gold: #fbbf24;
 
   /* Text Colors */
   --text-main: #ffffff;
@@ -20,11 +21,12 @@
 
   /* Effects */
   --border-color: rgba(255, 255, 255, 0.08);
-  --border-glow: rgba(245, 158, 11, 0.35);
+  --border-glow: rgba(245, 158, 11, 0.3);
   --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.4);
   
   /* Gradients */
-  --gradient-main: linear-gradient(135deg, var(--primary-gold) 0%, var(--accent-blue) 100%);
+  --gradient-main: linear-gradient(135deg, var(--primary-gold) 0%, var(--primary-orange) 100%);
+  --gradient-gold-blue: linear-gradient(135deg, var(--primary-gold) 0%, var(--accent-blue) 100%);
 }
 
 /* ==========================================
@@ -45,7 +47,7 @@ body {
   overflow-x: hidden;
   background-image: 
     radial-gradient(circle at 10% 20%, rgba(245, 158, 11, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(56, 189, 248, 0.08) 0%, transparent 40%);
+    radial-gradient(circle at 90% 80%, rgba(56, 189, 248, 0.06) 0%, transparent 40%);
 }
 
 /* Custom Scrollbar */
@@ -93,7 +95,7 @@ button {
   border-radius: 14px;
   padding: 16px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   box-shadow: 0 4px 15px rgba(245, 158, 11, 0.25);
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s ease;
 }
@@ -124,7 +126,7 @@ button {
   border-radius: 8px;
   padding: 6px 12px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
   transition: all 0.2s ease;
 }
@@ -172,6 +174,9 @@ button {
   justify-content: center;
   padding: 20px;
   background: var(--bg-dark);
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(245, 158, 11, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(56, 189, 248, 0.07) 0%, transparent 50%);
 }
 
 .auth-card {
@@ -183,7 +188,7 @@ button {
   border: 1px solid var(--border-color);
   border-radius: 24px;
   padding: 32px;
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-soft), 0 0 60px rgba(245, 158, 11, 0.05);
   text-align: center;
   animation: fadeIn 0.4s ease-out;
 }
@@ -633,7 +638,7 @@ input[type="checkbox"]:checked::after {
   background-size: cover;
   background-position: center;
   margin: 0 auto 6px;
-  border: 2px solid rgba(245, 158, 11, 0.5);
+  border: 2px solid rgba(245, 158, 11, 0.4);
   transition: border-color 0.2s;
 }
 
@@ -670,7 +675,7 @@ input[type="checkbox"]:checked::after {
 .nft-card-gold:hover {
   border-color: var(--border-glow);
   transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5), 0 0 20px rgba(245, 158, 11, 0.08);
 }
 
 .nft-img-gold {
@@ -897,8 +902,8 @@ input::placeholder, textarea::placeholder {
    COMPONENT SPECIFIC (Wallet Dashboard)
    ========================================== */
 .balance-card-gold {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(56, 189, 248, 0.15));
-  border-color: rgba(245, 158, 11, 0.2);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(56, 189, 248, 0.08));
+  border-color: rgba(245, 158, 11, 0.18);
   text-align: left;
 }
 
@@ -945,7 +950,7 @@ input::placeholder, textarea::placeholder {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(245, 158, 11, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -978,7 +983,7 @@ input::placeholder, textarea::placeholder {
 }
 
 .select-badge-gold {
-  background: rgba(245, 158, 11, 0.2);
+  background: rgba(245, 158, 11, 0.15);
   color: var(--primary-gold);
   padding: 4px 8px;
   border-radius: 8px;
