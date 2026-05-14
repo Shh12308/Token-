@@ -4,7 +4,7 @@ import axios from 'axios';
 import { faArrowLeft, faPaperPlane, faGasPump, faExclamationTriangle, faLock } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import BottomNav from '../components/BottomNav';
-import { signAndBroadcast, getActiveWallet } from '../utils/keyManager'; // Our independent vault
+import { signAndBroadcast, getActiveWallet } from '../utils/Keymanager'; // Our independent vault
 
 const API_BASE = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
