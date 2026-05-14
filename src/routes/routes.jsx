@@ -35,7 +35,7 @@ const AppRoutes = () => {
         <Route path="/kyc" element={<KYCPage />} />
         <Route path="/buy" element={<BuyPage />} />
         <Route path="/send" element={<SendPage />} />
-        <Route path="/search" element={<ReceivePage />} />
+        <Route path="/receive" element={<ReceivePage />} />
         <Route path="/nft" element={<NFTBrowsePage />} />
         <Route path="/swap" element={<SwapPage />} />
         <Route path="/security" element={<Security />} />
