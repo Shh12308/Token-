@@ -1,17 +1,17 @@
 /* ==========================================
-   VARIABLES: UNIQUE "PURPLE NOIR" THEME
+   VARIABLES: UNIQUE "GOLD NOIR" THEME
    ========================================== */
 :root {
   --bg-dark: #050505;
-  --bg-glass: rgba(20, 20, 25, 0.65);
-  --bg-input: #0c0c10;
-  --bg-card: rgba(18, 18, 22, 0.8);
-  --bg-nav: rgba(10, 10, 14, 0.85);
+  --bg-glass: rgba(20, 18, 12, 0.65);
+  --bg-input: #0c0a08;
+  --bg-card: rgba(22, 18, 12, 0.8);
+  --bg-nav: rgba(10, 8, 6, 0.85);
 
   /* Brand Colors */
-  --primary-purple: #8b5cf6;
-  --primary-blue: #3b82f6;
-  --accent-pink: #d946ef;
+  --primary-gold: #f59e0b;
+  --primary-orange: #d97706;
+  --accent-blue: #38bdf8;
 
   /* Text Colors */
   --text-main: #ffffff;
@@ -20,11 +20,11 @@
 
   /* Effects */
   --border-color: rgba(255, 255, 255, 0.08);
-  --border-glow: rgba(139, 92, 246, 0.3);
+  --border-glow: rgba(245, 158, 11, 0.35);
   --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.4);
   
   /* Gradients */
-  --gradient-main: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-blue) 100%);
+  --gradient-main: linear-gradient(135deg, var(--primary-gold) 0%, var(--accent-blue) 100%);
 }
 
 /* ==========================================
@@ -44,8 +44,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   background-image: 
-    radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 40%);
+    radial-gradient(circle at 10% 20%, rgba(245, 158, 11, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(56, 189, 248, 0.08) 0%, transparent 40%);
 }
 
 /* Custom Scrollbar */
@@ -65,12 +65,12 @@ body {
 }
 
 ::selection {
-  background: var(--primary-purple);
-  color: white;
+  background: var(--primary-gold);
+  color: #000;
 }
 
 /* ==========================================
-   BUTTONS (Adjusted to prevent global override issues)
+   BUTTONS
    ========================================== */
 button {
   appearance: none;
@@ -89,19 +89,19 @@ button {
   cursor: pointer;
   width: 100%;
   background: var(--gradient-main);
-  color: white;
+  color: #000;
   border-radius: 14px;
   padding: 16px;
   font-size: 16px;
   font-weight: 600;
-  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.25);
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.25);
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s ease;
 }
 
 .btn-primary:hover, .btn-gold:hover {
   transform: translateY(-2px);
   filter: brightness(1.1);
-  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
 }
 
 .btn-primary:active, .btn-gold:active {
@@ -120,12 +120,12 @@ button {
   border: none;
   cursor: pointer;
   background: var(--gradient-main);
-  color: white;
+  color: #000;
   border-radius: 8px;
   padding: 6px 12px;
   font-size: 0.75rem;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
   transition: all 0.2s ease;
 }
 
@@ -152,9 +152,9 @@ button {
 }
 
 .btn-secondary:hover, .button-secondary:hover, .btn-gold-outline:hover:not(:disabled) {
-  border-color: var(--primary-purple);
-  color: var(--primary-purple);
-  background: rgba(139, 92, 246, 0.05);
+  border-color: var(--primary-gold);
+  color: var(--primary-gold);
+  background: rgba(245, 158, 11, 0.05);
 }
 
 .btn-gold-outline:disabled {
@@ -218,7 +218,7 @@ button {
 .btn-text {
   background: transparent;
   border: none;
-  color: var(--primary-purple);
+  color: var(--primary-gold);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -269,9 +269,9 @@ button {
 }
 
 .progress-step.active {
-  background: var(--primary-purple);
-  color: white;
-  border-color: var(--primary-purple);
+  background: var(--primary-gold);
+  color: #000;
+  border-color: var(--primary-gold);
   box-shadow: 0 0 12px var(--border-glow);
 }
 
@@ -300,9 +300,9 @@ button {
 }
 
 .seed-word:hover {
-  border-color: var(--primary-purple);
+  border-color: var(--primary-gold);
   color: var(--text-main);
-  background: rgba(139, 92, 246, 0.05);
+  background: rgba(245, 158, 11, 0.05);
   transform: translateY(-2px);
 }
 
@@ -310,8 +310,8 @@ button {
    VERIFICATION & CHECKBOXES
    ========================================== */
 .verification-section {
-  background: rgba(139, 92, 246, 0.05);
-  border: 1px solid rgba(139, 92, 246, 0.1);
+  background: rgba(245, 158, 11, 0.05);
+  border: 1px solid rgba(245, 158, 11, 0.12);
   border-radius: 12px;
   padding: 16px;
   margin: 16px 0;
@@ -356,15 +356,15 @@ input[type="checkbox"] {
 }
 
 input[type="checkbox"]:checked {
-  background: var(--primary-purple);
-  border-color: var(--primary-purple);
-  box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+  background: var(--primary-gold);
+  border-color: var(--primary-gold);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
 }
 
 input[type="checkbox"]:checked::after {
   content: '✓';
   position: absolute;
-  color: white;
+  color: #000;
   font-size: 14px;
   top: 50%;
   left: 50%;
@@ -406,7 +406,7 @@ input[type="checkbox"]:checked::after {
 }
 
 .header-left:hover, .header-right:hover {
-  color: var(--primary-purple);
+  color: var(--primary-gold);
 }
 
 .header-center h2 {
@@ -460,12 +460,12 @@ input[type="checkbox"]:checked::after {
 }
 
 .nav-item-gold.active {
-  color: var(--primary-purple);
+  color: var(--primary-gold);
 }
 
 .nav-item-gold.active .nav-icon-gold {
   transform: translateY(-2px);
-  color: var(--primary-purple);
+  color: var(--primary-gold);
 }
 
 /* ==========================================
@@ -483,8 +483,8 @@ input[type="checkbox"]:checked::after {
 }
 
 .search-bar-gold:focus-within {
-  border-color: var(--primary-purple);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+  border-color: var(--primary-gold);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
 }
 
 .search-bar-gold input {
@@ -542,8 +542,8 @@ input[type="checkbox"]:checked::after {
 }
 
 .filter-btn.active {
-  background: var(--primary-purple);
-  color: #fff;
+  background: var(--primary-gold);
+  color: #000;
   font-weight: 600;
 }
 
@@ -580,8 +580,8 @@ input[type="checkbox"]:checked::after {
 }
 
 .category-tab.active {
-  background: var(--primary-purple);
-  color: #fff;
+  background: var(--primary-gold);
+  color: #000;
   font-weight: 600;
 }
 
@@ -595,7 +595,7 @@ input[type="checkbox"]:checked::after {
 .trending-title {
   font-size: 0.9rem;
   margin: 0 16px 8px;
-  color: var(--primary-purple);
+  color: var(--primary-gold);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -633,12 +633,12 @@ input[type="checkbox"]:checked::after {
   background-size: cover;
   background-position: center;
   margin: 0 auto 6px;
-  border: 2px solid rgba(139, 92, 246, 0.5);
+  border: 2px solid rgba(245, 158, 11, 0.5);
   transition: border-color 0.2s;
 }
 
 .trending-item:hover .trending-img {
-  border-color: var(--primary-purple);
+  border-color: var(--primary-gold);
 }
 
 .trending-name {
@@ -686,8 +686,8 @@ input[type="checkbox"]:checked::after {
   position: absolute;
   top: 6px;
   right: 6px;
-  background: var(--primary-purple);
-  color: #fff;
+  background: var(--primary-gold);
+  color: #000;
   font-size: 0.6rem;
   padding: 2px 6px;
   border-radius: 8px;
@@ -716,7 +716,7 @@ input[type="checkbox"]:checked::after {
 .nft-price-gold {
   font-size: 0.8rem;
   font-weight: 700;
-  color: var(--primary-purple);
+  color: var(--primary-gold);
 }
 
 /* ==========================================
@@ -737,7 +737,7 @@ input[type="checkbox"]:checked::after {
 }
 
 .modal-content {
-  background: #1a1a1e;
+  background: #1a1610;
   border-radius: 16px;
   padding: 20px;
   width: 90%;
@@ -755,7 +755,7 @@ input[type="checkbox"]:checked::after {
 
 .modal-header h3 {
   margin: 0;
-  color: var(--primary-purple);
+  color: var(--primary-gold);
   font-size: 1.1rem;
 }
 
@@ -803,7 +803,7 @@ input[type="checkbox"]:checked::after {
 }
 
 .modal-info-price {
-  color: var(--primary-purple);
+  color: var(--primary-gold);
   font-size: 1.2rem;
   margin-top: 8px;
   font-weight: 600;
@@ -854,7 +854,7 @@ input[type="checkbox"]:checked::after {
 }
 
 .card:hover {
-  border-color: rgba(139, 92, 246, 0.3);
+  border-color: rgba(245, 158, 11, 0.3);
 }
 
 /* ==========================================
@@ -885,8 +885,8 @@ input[type="checkbox"]:checked::after {
 }
 
 .input-gold:focus, input:focus, textarea:focus, select:focus {
-  border-color: var(--primary-purple);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+  border-color: var(--primary-gold);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
 }
 
 input::placeholder, textarea::placeholder {
@@ -897,8 +897,8 @@ input::placeholder, textarea::placeholder {
    COMPONENT SPECIFIC (Wallet Dashboard)
    ========================================== */
 .balance-card-gold {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.15));
-  border-color: rgba(139, 92, 246, 0.2);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(56, 189, 248, 0.15));
+  border-color: rgba(245, 158, 11, 0.2);
   text-align: left;
 }
 
@@ -974,12 +974,12 @@ input::placeholder, textarea::placeholder {
 }
 
 .swap-input-group-gold:focus-within {
-  border-color: var(--primary-purple);
+  border-color: var(--primary-gold);
 }
 
 .select-badge-gold {
-  background: rgba(139, 92, 246, 0.2);
-  color: var(--primary-purple);
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--primary-gold);
   padding: 4px 8px;
   border-radius: 8px;
   font-size: 14px;
@@ -1009,7 +1009,7 @@ input::placeholder, textarea::placeholder {
   width: 40px;
   height: 40px;
   border: 3px solid var(--bg-input);
-  border-top-color: var(--primary-purple);
+  border-top-color: var(--primary-gold);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin: 20px auto;
