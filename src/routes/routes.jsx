@@ -4,8 +4,8 @@ import { AnimatePresence } from 'framer-motion';
 
 // --- PAGES ---
 import Home from '../pages/Home';
-import ImportWalletPage from './pages/Importwallet';
-import CreateWalletPage from './pages/Createwalletpage';
+import ImportWalletPage from '../pages/Importwallet';
+import CreateWalletPage from '../pages/Createwalletpage';
 import Staking from '../pages/Staking';
 import KYCPage from '../pages/KYCPage';
 import BuyPage from '../pages/BuyPage';
