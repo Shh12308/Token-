@@ -1,25 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { faArrowLeft, faPaperPlane, faGasPump, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faPaperPlane, faGasPump, faExclamationTriangle, faLock } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import BottomNav from '../components/BottomNav';
+import { signAndBroadcast, getActiveWallet } from '../utils/keyManager'; // Our independent vault
 
 const API_BASE = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
-
-// ── EIP-1559 gas estimation via provider ──────────────────
-const estimateGas = async (tx) => {
-  if (!window.ethereum) return null;
-  try {
-    const gasHex = await window.ethereum.request({
-      method: 'eth_estimateGas',
-      params: [{ ...tx }],
-    });
-    return parseInt(gasHex, 16);
-  } catch {
-    return 21000; // fallback to standard transfer
-  }
-};
 
 const SendPage = () => {
   const navigate = useNavigate();
@@ -40,19 +27,18 @@ const SendPage = () => {
   const [error, setError] = useState('');
 
   // ── Transaction state (populated after /send) ──────────
-  const [txData, setTxData] = useState(null);       // { transaction, unsignedTransaction }
-  const [estimatedGas, setEstimatedGas] = useState(null);
+  const [txData, setTxData] = useState(null);
   const [txHash, setTxHash] = useState('');
 
   // ── Blockchain config ──────────────────────────────────
   const CHAINS = {
-    ethereum:  { symbol: 'ETH',  chainId: 1,     name: 'Ethereum' },
-    polygon:   { symbol: 'MATIC',chainId: 137,   name: 'Polygon' },
-    bsc:       { symbol: 'BNB',  chainId: 56,    name: 'BNB Smart Chain' },
-    arbitrum:  { symbol: 'ETH',  chainId: 42161, name: 'Arbitrum One' },
-    optimism:  { symbol: 'ETH',  chainId: 10,    name: 'Optimism' },
-    avalanche: { symbol: 'AVAX', chainId: 43114, name: 'Avalanche' },
-    base:      { symbol: 'ETH',  chainId: 8453,  name: 'Base' },
+    ethereum:  { symbol: 'ETH',  chainId: 1,     name: 'Ethereum', explorer: 'https://etherscan.io' },
+    polygon:   { symbol: 'MATIC',chainId: 137,   name: 'Polygon', explorer: 'https://polygonscan.com' },
+    bsc:       { symbol: 'BNB',  chainId: 56,    name: 'BNB Smart Chain', explorer: 'https://bscscan.com' },
+    arbitrum:  { symbol: 'ETH',  chainId: 42161, name: 'Arbitrum One', explorer: 'https://arbiscan.io' },
+    optimism:  { symbol: 'ETH',  chainId: 10,    name: 'Optimism', explorer: 'https://optimistic.etherscan.io' },
+    avalanche: { symbol: 'AVAX', chainId: 43114, name: 'Avalanche', explorer: 'https://snowtrace.io' },
+    base:      { symbol: 'ETH',  chainId: 8453,  name: 'Base', explorer: 'https://basescan.org' },
   };
 
   const TOKENS = {
@@ -60,24 +46,12 @@ const SendPage = () => {
       { symbol: 'ETH',  address: '' },
       { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' },
     ],
-    polygon: [
-      { symbol: 'MATIC', address: '' },
-    ],
-    bsc: [
-      { symbol: 'BNB', address: '' },
-    ],
-    arbitrum: [
-      { symbol: 'ETH', address: '' },
-    ],
-    optimism: [
-      { symbol: 'ETH', address: '' },
-    ],
-    avalanche: [
-      { symbol: 'AVAX', address: '' },
-    ],
-    base: [
-      { symbol: 'ETH', address: '' },
-    ],
+    polygon: [{ symbol: 'MATIC', address: '' }],
+    bsc: [{ symbol: 'BNB', address: '' }],
+    arbitrum: [{ symbol: 'ETH', address: '' }],
+    optimism: [{ symbol: 'ETH', address: '' }],
+    avalanche: [{ symbol: 'AVAX', address: '' }],
+    base: [{ symbol: 'ETH', address: '' }],
   };
 
   // ── Load user wallets on mount ─────────────────────────
@@ -99,7 +73,7 @@ const SendPage = () => {
         }
       } catch (err) {
         console.error('Failed to load wallets:', err);
-        setError('Could not load wallets. Please try again.');
+        setError('Could not load wallets.');
       }
     };
     fetchWallets();
@@ -111,7 +85,6 @@ const SendPage = () => {
     if (w) {
       setSelectedWallet(w);
       setBlockchain(w.blockchain);
-      // Reset asset to native token when wallet changes
       setAsset(CHAINS[w.blockchain]?.symbol || 'ETH');
       setAssetAddress('');
     }
@@ -132,6 +105,12 @@ const SendPage = () => {
       return;
     }
 
+    // Check if the local vault is unlocked
+    if (!getActiveWallet()) {
+      setError('Wallet is locked. Please go to Settings to unlock your wallet before sending.');
+      return;
+    }
+
     setError('');
     setLoading(true);
 
@@ -147,23 +126,10 @@ const SendPage = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Backend returns: { message, transaction: { id, from, to, amount, asset }, unsignedTransaction }
       const { transaction, unsignedTransaction } = res.data;
-
       setTxData({ transaction, unsignedTransaction });
-
-      // Estimate gas for display
-      if (unsignedTransaction && window.ethereum) {
-        const gas = await estimateGas({
-          from: unsignedTransaction.from,
-          to: unsignedTransaction.to,
-          value: unsignedTransaction.value,
-          data: unsignedTransaction.data || '0x',
-        });
-        setEstimatedGas(gas);
-      }
-
       setStep('confirm');
+
     } catch (err) {
       console.error('Prepare send error:', err);
       const msg = err.response?.data?.message || 'Failed to prepare transaction';
@@ -173,7 +139,8 @@ const SendPage = () => {
     }
   };
 
-  // ── Step 2: Sign with MetaMask & broadcast ─────────────
+  // ── Step 2: Sign Locally & Broadcast ───────────────────
+  // THIS REPLACES METAMASK ENTIRELY
   const handleConfirmSend = async () => {
     if (!txData?.unsignedTransaction || !txData?.transaction) return;
 
@@ -184,52 +151,17 @@ const SendPage = () => {
     try {
       const { unsignedTransaction, transaction } = txData;
 
-      // ── Switch to correct chain if needed ────────────
-      const targetChainId = CHAINS[blockchain]?.chainId || 1;
-      const chainIdHex = `0x${targetChainId.toString(16)}`;
+      // 1. Sign the transaction locally using the E2EE Vault
+      // 2. Broadcast the signed hex via our backend
+      const broadcastResult = await signAndBroadcast(unsignedTransaction);
 
-      try {
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: chainIdHex }],
-        });
-      } catch (switchErr) {
-        // Chain not added — for non-standard chains you'd call
-        // wallet_addEthereumChain here. For now, abort.
-        if (switchErr.code === 4902) {
-          setError(`Please add ${CHAINS[blockchain]?.name} network to your wallet.`);
-          setStep('confirm');
-          setLoading(false);
-          return;
-        }
-        throw switchErr;
-      }
+      setTxHash(broadcastResult.txHash);
 
-      // ── Request signature from MetaMask ──────────────
-      const txParams = {
-        from: unsignedTransaction.from,
-        to: unsignedTransaction.to,
-        value: unsignedTransaction.value,
-        data: unsignedTransaction.data || '0x',
-      };
-
-      // Only include gasPrice if it's a legacy tx (pre-EIP-1559)
-      if (unsignedTransaction.gasPrice) {
-        txParams.gasPrice = unsignedTransaction.gasPrice;
-      }
-
-      const hash = await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [txParams],
-      });
-
-      setTxHash(hash);
-
-      // ── Broadcast confirmation to backend ────────────
+      // 3. Tell the backend to update the Transaction record in Postgres
       const token = localStorage.getItem('authToken');
       await axios.post(`${API_BASE}/wallets/broadcast`, {
         transactionId: transaction.id,
-        txHash: hash,
+        txHash: broadcastResult.txHash,
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -238,14 +170,11 @@ const SendPage = () => {
 
     } catch (err) {
       console.error('Sign/broadcast error:', err);
-
-      if (err.code === 4001) {
-        // User rejected the transaction
-        setError('Transaction rejected by user.');
-      } else if (err.code === -32603) {
-        setError('Insufficient funds for gas or transaction value.');
+      
+      if (err.message.includes('Wallet is locked')) {
+        setError('Your wallet is locked. Please return to settings to unlock it.');
       } else {
-        setError(err.message || 'Failed to sign or broadcast transaction.');
+        setError(err.response?.data?.message || err.message || 'Failed to sign or broadcast transaction.');
       }
       setStep('confirm');
     } finally {
@@ -259,19 +188,15 @@ const SendPage = () => {
     setAmount('');
     setStep('form');
     setTxData(null);
-    setEstimatedGas(null);
     setTxHash('');
     setError('');
   };
 
-  // ── Gas fee display helper ─────────────────────────────
-  const gasFeeEth = estimatedGas
-    ? (estimatedGas * 20 * 1e-9).toFixed(8) // rough estimate at 20 gwei
-    : null;
-
-  // ── Truncate address helper ────────────────────────────
+  // ── Helpers ────────────────────────────────────────────
   const truncateAddr = (addr) =>
     addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '';
+
+  const isWalletLocked = !getActiveWallet();
 
   return (
     <div className="dashboard-container-gold">
@@ -299,6 +224,19 @@ const SendPage = () => {
           </div>
         )}
 
+        {isWalletLocked && step === 'form' && (
+          <div style={{
+            background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)',
+            borderRadius: 8, padding: 16, marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center'
+          }}>
+            <FontAwesomeIcon icon={faLock} style={{ color: '#f59e0b', fontSize: 20 }} />
+            <div>
+              <div style={{ color: '#fbbf24', fontWeight: 600, fontSize: 14 }}>Wallet Locked</div>
+              <div style={{ color: '#aaa', fontSize: 12 }}>Unlock your vault in Settings to send funds.</div>
+            </div>
+          </div>
+        )}
+
         {/* ── STEP: FORM ─────────────────────────────────── */}
         {step === 'form' && (
           <div className="card send-card-gold">
@@ -306,13 +244,10 @@ const SendPage = () => {
               <h2><FontAwesomeIcon icon={faPaperPlane} /> Send Crypto</h2>
             </div>
 
-            {/* Wallet selector */}
             <div className="input-group">
               <label className="label-gold">From Wallet</label>
               {wallets.length === 0 ? (
-                <p style={{ color: '#a0a0a0', fontSize: '14px' }}>
-                  No wallets found. Import one first.
-                </p>
+                <p style={{ color: '#a0a0a0', fontSize: '14px' }}>No wallets found.</p>
               ) : (
                 <select
                   className="input-gold"
@@ -328,7 +263,6 @@ const SendPage = () => {
               )}
             </div>
 
-            {/* Blockchain (driven by wallet) */}
             <div className="input-group">
               <label className="label-gold">Blockchain</label>
               <input
@@ -339,7 +273,6 @@ const SendPage = () => {
               />
             </div>
 
-            {/* Asset */}
             <div className="input-group">
               <label className="label-gold">Asset</label>
               <select
@@ -353,7 +286,6 @@ const SendPage = () => {
               </select>
             </div>
 
-            {/* Recipient */}
             <div className="input-group">
               <label className="label-gold">Recipient Address</label>
               <input
@@ -365,7 +297,6 @@ const SendPage = () => {
               />
             </div>
 
-            {/* Amount — BUG FIX: e.target.value instead of e.value */}
             <div className="input-group">
               <label className="label-gold">Amount ({asset})</label>
               <input
@@ -382,7 +313,7 @@ const SendPage = () => {
             <button
               className="btn-primary"
               onClick={handlePrepareSend}
-              disabled={loading || !selectedWalletId}
+              disabled={loading || !selectedWalletId || isWalletLocked}
             >
               {loading ? 'Preparing...' : 'Next'}
             </button>
@@ -414,15 +345,13 @@ const SendPage = () => {
               <span>{CHAINS[blockchain]?.name || blockchain}</span>
             </div>
 
-            {estimatedGas && (
-              <div className="confirm-row-gold" style={{ color: '#a0a0a0' }}>
-                <span>
-                  <FontAwesomeIcon icon={faGasPump} style={{ marginRight: 4 }} />
-                  Est. Gas:
-                </span>
-                <span>{estimatedGas.toLocaleString()} gas units</span>
-              </div>
-            )}
+            <div className="confirm-row-gold" style={{ color: '#a0a0a0' }}>
+              <span>
+                <FontAwesomeIcon icon={faGasPump} style={{ marginRight: 4 }} />
+                Gas:
+              </span>
+              <span>Network Fee (Signed locally)</span>
+            </div>
 
             <button
               className="btn-primary"
@@ -430,7 +359,7 @@ const SendPage = () => {
               disabled={loading}
             >
               <FontAwesomeIcon icon={faPaperPlane} style={{ marginRight: 8 }} />
-              {loading ? 'Waiting for wallet...' : 'Confirm & Sign'}
+              {loading ? 'Signing...' : 'Confirm & Send'}
             </button>
 
             <button
@@ -447,9 +376,9 @@ const SendPage = () => {
         {step === 'signing' && (
           <div className="card confirm-card-gold" style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>🔐</div>
-            <h3>Signing Transaction</h3>
+            <h3>Signing & Broadcasting</h3>
             <p style={{ color: '#a0a0a0', margin: '12px 0' }}>
-              Please confirm the transaction in your wallet extension…
+              BlockVault is securely signing your transaction locally and broadcasting it to the network...
             </p>
             <div className="spinner" style={{ margin: '20px auto' }} />
           </div>
