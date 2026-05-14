@@ -19,8 +19,22 @@ const TOKEN_CONFIG = {
 
 const AssetPage = () => {
   const navigate = useNavigate();
-  const { symbol } = useParams(); // gets 'usdc' from /app/asset/usdc
-  const tokenConfig = TOKEN_CONFIG[symbol] || { name: symbol.toUpperCase(), icon: 'fa-solid fa-coins', coingeckoId: symbol };
+  const { symbol } = useParams();
+
+  // ✅ Guard early
+  if (!symbol) {
+    return <div style={{ color: '#fff', padding: 20 }}>Invalid asset</div>;
+  }
+
+  const normalizedSymbol = symbol.toLowerCase();
+
+  const tokenConfig =
+    TOKEN_CONFIG[normalizedSymbol] || {
+      name: normalizedSymbol.toUpperCase(),
+      icon: 'fa-solid fa-coins',
+      coingeckoId: normalizedSymbol,
+      decimals: 18,
+    };
 
   // ── State ──────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
@@ -34,49 +48,55 @@ const AssetPage = () => {
 
   // ── Fetch Data ─────────────────────────────────────────
   useEffect(() => {
-    if (symbol) fetchAssetData();
-  }, [symbol, chartDays]);
+    fetchAssetData();
+  }, [normalizedSymbol, chartDays]);
 
   const fetchAssetData = async () => {
     setLoading(true);
     const token = localStorage.getItem('authToken');
+
     try {
       // 1. Get Balance & Price
-      const balRes = await axios.get(`${API_BASE}/balances`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const balRes = await axios.get(${API_BASE}/balances, {
+        headers: { Authorization: Bearer ${token} },
       });
-      const assetInfo = balRes.data.assets.find(
-        a => a.symbol.toLowerCase() === symbol.toLowerCase()
+
+      const assetInfo = (balRes.data.assets || []).find(
+        a => a.symbol?.toLowerCase() === normalizedSymbol
       );
 
       if (assetInfo) {
-        setBalance(assetInfo.balance);
-        setValue(assetInfo.value);
-        setPrice(assetInfo.price);
-        setChange(assetInfo.change);
+        setBalance(assetInfo.balance || 0);
+        setValue(assetInfo.value || 0);
+        setPrice(assetInfo.price || 0);
+        setChange(assetInfo.change || 0);
       }
 
       // 2. Get Chart Data
-      const chartRes = await axios.get(`${API_BASE}/market/chart`, {
+      const chartRes = await axios.get(${API_BASE}/market/chart, {
         params: { symbol: tokenConfig.coingeckoId, days: chartDays },
       });
-      
+
       if (chartRes.data?.data?.prices) {
         const formatted = chartRes.data.data.prices.map(([timestamp, price]) => ({
           date: new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
           price,
         }));
         setChartData(formatted);
+      } else {
+        setChartData([]);
       }
 
-      // 3. Get Transactions for this asset
-      const txRes = await axios.get(`${API_BASE}/transactions`, {
-        headers: { Authorization: `Bearer ${token}` },
+      // 3. Get Transactions
+      const txRes = await axios.get(${API_BASE}/transactions, {
+        headers: { Authorization: Bearer ${token} },
         params: { limit: 10 },
       });
+
       const assetTxs = (txRes.data.transactions || []).filter(
-        tx => tx.asset?.toLowerCase() === symbol.toLowerCase()
+        tx => tx.asset?.toLowerCase() === normalizedSymbol
       );
+
       setTransactions(assetTxs);
 
     } catch (err) {
@@ -88,13 +108,16 @@ const AssetPage = () => {
 
   // ── Helpers ────────────────────────────────────────────
   const formatCurrency = (val) =>
-    val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    Number(val || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
 
-  const isPositive = change >= 0;
+  const isPositive = Number(change) >= 0;
 
   return (
     <div className="dashboard-container-gold">
-      {/* ── Header ─────────────────────────────────────── */}
+      {/* Header /}
       <header className="top-header-gold">
         <div className="header-left" onClick={() => navigate('/app')}>
           <FontAwesomeIcon icon={faArrowLeft} /> Back
@@ -107,8 +130,8 @@ const AssetPage = () => {
       </header>
 
       <main className="main-scroll-area-gold" style={{ padding: '20px' }}>
-        
-        {/* ── Price & Change ────────────────────────────── */}
+
+        {/ Price /}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontSize: 36, fontWeight: 700, color: '#fff' }}>
             ${formatCurrency(price)}
@@ -118,11 +141,12 @@ const AssetPage = () => {
             fontSize: 16,
             marginTop: 4,
           }}>
-            {isPositive ? '+' : ''}{change.toFixed(2)}% <span style={{ color: '#888', fontSize: 12 }}>(24h)</span>
+            {isPositive ? '+' : ''}{Number(change).toFixed(2)}%
+            <span style={{ color: '#888', fontSize: 12 }}> (24h)</span>
           </div>
         </div>
 
-        {/* ── Chart ─────────────────────────────────────── */}
+        {/ Chart /}
         <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 16, marginBottom: 24 }}>
           <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
             {[7, 30, 90].map(d => (
@@ -147,126 +171,59 @@ const AssetPage = () => {
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#c9a84c" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#c9a84c" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
                   <XAxis dataKey="date" hide />
-                  <YAxis domain={['auto', 'auto']} hide />
-                  <Tooltip 
-                    contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 8 }}
-                    labelStyle={{ color: '#888' }}
-                    itemStyle={{ color: '#c9a84c', fontWeight: 700 }}
-                    formatter={(val) => [`$${formatCurrency(val)}`, 'Price']}
+                  <YAxis hide />
+                  <Tooltip
+                    formatter={(val) => [$${formatCurrency(val)}, 'Price']}
                   />
-                  <Area type="monotone" dataKey="price" stroke="#c9a84c" fillOpacity={1} fill="url(#colorPrice)" />
+                  <Area type="monotone" dataKey="price" stroke="#c9a84c" fillOpacity={0.2} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ textAlign: 'center', color: '#888', paddingTop: 80 }}>Loading chart...</div>
+              <div style={{ textAlign: 'center', color: '#888', paddingTop: 80 }}>
+                Loading chart...
+              </div>
             )}
           </div>
         </div>
 
-        {/* ── Balance Card ──────────────────────────────── */}
+        {/ Balance /}
         <div className="balance-card-gold" style={{ marginBottom: 24 }}>
-          <div style={{ color: '#888', fontSize: 14 }}>Your Balance</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#fff', marginTop: 4 }}>
-            {balance.toFixed(4)} <span style={{ textTransform: 'uppercase' }}>{symbol}</span>
+          <div style={{ color: '#888' }}>Your Balance</div>
+          <div style={{ fontSize: 28, color: '#fff' }}>
+            {Number(balance).toFixed(4)} {normalizedSymbol.toUpperCase()}
           </div>
-          <div style={{ color: '#c9a84c', fontSize: 16, marginTop: 4 }}>
+          <div style={{ color: '#c9a84c' }}>
             ≈ ${formatCurrency(value)}
           </div>
         </div>
 
-        {/* ── Action Buttons ────────────────────────────── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 32 }}>
-          {[
-            { icon: faArrowUp, label: 'Send', color: '#f87171', action: () => navigate(`/app/send?asset=${symbol.toUpperCase()}`) },
-            { icon: faArrowDown, label: 'Receive', color: '#4ade80', action: () => navigate('/app/receive') },
-            { icon: faRepeat, label: 'Swap', color: '#60a5fa', action: () => navigate(`/app/swap?from=${symbol.toUpperCase()}`) },
-            { icon: faCartShopping, label: 'Buy', color: '#c9a84c', action: () => navigate(`/app/buy?currency=${symbol.toUpperCase()}`) },
-          ].map(btn => (
-            <button
-              key={btn.label}
-              onClick={btn.action}
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: 12,
-                padding: '16px 8px', cursor: 'pointer', color: '#fff',
-              }}
-            >
-              <div style={{
-                width: 40, height: 40, borderRadius: '50%', background: `${btn.color}20`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <FontAwesomeIcon icon={btn.icon} color={btn.color} />
-              </div>
-              <span style={{ fontSize: 12, color: '#ccc' }}>{btn.label}</span>
-            </button>
-          ))}
+        {/ Actions /}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          <button onClick={() => navigate(/app/send?asset=${normalizedSymbol.toUpperCase()})}>Send</button>
+          <button onClick={() => navigate('/app/receive')}>Receive</button>
+          <button onClick={() => navigate(/app/swap?from=${normalizedSymbol.toUpperCase()})}>Swap</button>
+          <button onClick={() => navigate(/app/buy?currency=${normalizedSymbol.toUpperCase()})}>Buy</button>
         </div>
 
-        {/* ── Token Info ────────────────────────────────── */}
-        <div style={{ marginBottom: 32 }}>
-          <h3 style={{ color: '#fff', marginBottom: 12 }}>Token Info</h3>
-          <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ color: '#888' }}>Network</span>
-              <span style={{ color: '#fff' }}>Ethereum</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ color: '#888' }}>Decimals</span>
-              <span style={{ color: '#fff' }}>{tokenConfig.decimals}</span>
-            </div>
-            {tokenConfig.address && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#888' }}>Contract</span>
-                <span style={{ color: '#c9a84c', fontSize: 12 }}>
-                  {tokenConfig.address.slice(0, 6)}...{tokenConfig.address.slice(-4)}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Recent Transactions ───────────────────────── */}
-        <div>
-          <h3 style={{ color: '#fff', marginBottom: 12 }}>Recent Transactions</h3>
+        {/ Transactions */}
+        <div style={{ marginTop: 32 }}>
+          <h3 style={{ color: '#fff' }}>Recent Transactions</h3>
           {transactions.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#666', padding: 24 }}>
-              No transactions found for {symbol.toUpperCase()}
+            <div style={{ color: '#666' }}>
+              No transactions found for {normalizedSymbol.toUpperCase()}
             </div>
           ) : (
             transactions.map(tx => (
-              <div key={tx.id} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 16, marginBottom: 8,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <FontAwesomeIcon 
-                    icon={tx.type === 'send' ? faArrowUp : faArrowDown} 
-                    color={tx.type === 'send' ? '#f87171' : '#4ade80'} 
-                  />
-                  <div>
-                    <div style={{ textTransform: 'capitalize', color: '#fff' }}>{tx.type}</div>
-                    <div style={{ color: '#888', fontSize: 12 }}>{new Date(tx.createdAt).toLocaleDateString()}</div>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ color: tx.type === 'send' ? '#f87171' : '#4ade80' }}>
-                    {tx.type === 'send' ? '-' : '+'}{parseFloat(tx.amount).toFixed(4)} {tx.asset}
-                  </div>
-                  <div style={{ color: '#888', fontSize: 12, textTransform: 'capitalize' }}>{tx.status}</div>
-                </div>
+              <div key={tx.id}>
+                {tx.type} - {tx.amount} {tx.asset}
               </div>
             ))
           )}
         </div>
 
       </main>
+
       <BottomNav />
     </div>
   );
