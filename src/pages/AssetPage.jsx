@@ -73,9 +73,9 @@ const AssetPage = () => {
       }
 
       // 2. Get Chart Data
-      const chartRes = await axios.get(${API_BASE}/market/chart, {
-        params: { symbol: tokenConfig.coingeckoId, days: chartDays },
-      });
+      const chartRes = await axios.get(`${API_BASE}/market/chart`, {
+  params: { symbol: tokenConfig.coingeckoId, days: chartDays },
+});
 
       if (chartRes.data?.data?.prices) {
         const formatted = chartRes.data.data.prices.map(([timestamp, price]) => ({
