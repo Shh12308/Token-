@@ -7,7 +7,7 @@ import {
   faTag, faClock, faFire, faGem, faLock, faExclamationTriangle 
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { getWalletFromVault } from '../utils/keyManager';
+import { getWalletFromVault } from '../utils/Keymanager';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
