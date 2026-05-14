@@ -1,42 +1,49 @@
 // src/utils/wallet.js
 import { ethers } from 'ethers';
+import axios from 'axios';
 
-// --- 1. SEED PHRASE GENERATION ---
+const API_BASE = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
+const STORAGE_KEY = 'wallet_encrypted';
+
+// --- Helpers ---
+const ab2b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const b642ab = (base64) => {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+  return bytes.buffer;
+};
+
+// --- Core Cryptographic Functions ---
+
 export const generateSeedPhrase = () => {
-  const wallet = ethers.Wallet.createRandom();
-  return wallet.mnemonic.phrase.split(' ');
+  return ethers.Wallet.createRandom().mnemonic.phrase.split(' ');
 };
 
 export const copyToClipboard = (text) => {
   navigator.clipboard.writeText(text);
 };
 
-// --- 2. BIOMETRIC CHECK ---
 export const isBiometricAvailable = () => {
-  return window.PublicKeyCredential !== undefined && window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  return !!window.PublicKeyCredential;
 };
 
-// --- 3. ENCRYPTION / DECRYPTION (AES-GCM) ---
-// Helper to convert string to buffer
-const enc = new TextEncoder();
-const dec = new TextDecoder();
-
-// Derive a cryptographic key from a passcode (or simulated biometric string)
 export const deriveKeyFromPasscode = async (passcode) => {
-  const keyMaterial = await window.crypto.subtle.importKey(
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
     'raw',
     enc.encode(passcode),
-    { name: 'PBKDF2' },
+    'PBKDF2',
     false,
-    ['deriveKey']
+    ['deriveBits', 'deriveKey']
   );
-
-  return window.crypto.subtle.deriveKey(
+  
+  return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: enc.encode('blockvault-salt'), // In production, use a random salt stored with the IV
-      iterations: 100000,
-      hash: 'SHA-256',
+      salt: enc.encode('BlockVault-E2EE-Salt-V1'),
+      iterations: 600000,
+      hash: 'SHA-256'
     },
     keyMaterial,
     { name: 'AES-GCM', length: 256 },
@@ -46,29 +53,126 @@ export const deriveKeyFromPasscode = async (passcode) => {
 };
 
 export const encryptData = async (data, key) => {
-  const iv = window.crypto.getRandomValues(new Uint8Array(12));
-  const encrypted = await window.crypto.subtle.encrypt(
+  const enc = new TextEncoder();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
     key,
     enc.encode(data)
   );
-
   return {
-    iv: Array.from(iv).join(','), // Store IV as string for JSON
-    data: btoa(String.fromCharCode(...new Uint8Array(encrypted))) // Store data as Base64
+    data: ab2b64(encrypted),
+    iv: ab2b64(iv)
   };
 };
 
-export const decryptData = async (encryptedData, key, ivString) => {
-  try {
-    const iv = new Uint8Array(ivString.split(',').map(Number));
-    const decrypted = await window.crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0))
-    );
-    return dec.decode(decrypted);
-  } catch (e) {
-    throw new Error('Decryption failed. Invalid passcode.');
-  }
+export const decryptData = async (encryptedData, key, iv) => {
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: b642ab(iv) },
+    key,
+    b642ab(encryptedData)
+  );
+  const dec = new TextDecoder();
+  return dec.decode(decrypted);
+};
+
+// --- Wallet State Management ---
+
+let activeWallet = null; // Kept in memory only while logged in
+
+export const getStoredWallet = () => {
+  const data = localStorage.getItem(STORAGE_KEY);
+  return data ? JSON.parse(data) : null;
+};
+
+export const getActiveWallet = () => activeWallet;
+
+export const lockWallet = () => {
+  activeWallet = null;
+};
+
+// --- Auth & Sign Functions ---
+
+export const registerVault = async (email, password) => {
+  const wallet = ethers.Wallet.createRandom();
+  const encryptedVault = await wallet.encrypt(password);
+  
+  await axios.post(`${API_BASE}/auth/register`, {
+    email,
+    password,
+    walletAddress: wallet.address,
+    encryptedVault,
+  });
+
+  activeWallet = wallet;
+  localStorage.setItem('bv_vault_address', wallet.address);
+  
+  return wallet;
+};
+
+export const loginVault = async (email, password) => {
+  const res = await axios.post(`${API_BASE}/auth/login`, {
+    email, password
+  });
+
+  const wallet = await ethers.Wallet.fromEncryptedJson(res.data.encryptedVault, password);
+  
+  activeWallet = wallet;
+  localStorage.setItem('authToken', res.data.token);
+  localStorage.setItem('bv_vault_address', wallet.address);
+
+  return { wallet, token: res.data.token };
+};
+
+// Legacy passcode unlock for local storage wallets (used in LoginPage)
+export const unlockLocalVault = async (passcode) => {
+  const stored = getStoredWallet();
+  if (!stored) throw new Error("No local wallet found");
+  
+  const key = await deriveKeyFromPasscode(passcode);
+  const decryptedSeed = await decryptData(stored.encryptedSeed, key, stored.iv);
+  const wallet = new ethers.Wallet.fromPhrase(decryptedSeed);
+  
+  activeWallet = wallet;
+  return wallet;
+};
+
+// Import seed phrase and save locally
+export const saveWalletToVault = async (privateKeyOrPhrase, password, isPhrase = true) => {
+  const wallet = isPhrase 
+    ? ethers.Wallet.fromMnemonic(privateKeyOrPhrase.trim())
+    : new ethers.Wallet(privateKeyOrPhrase.trim());
+
+  const phraseString = wallet.mnemonic.phrase;
+  const key = await deriveKeyFromPasscode(password);
+  const encrypted = await encryptData(phraseString, key);
+
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      address: wallet.address,
+      encryptedSeed: encrypted.data,
+      iv: encrypted.iv,
+      createdAt: new Date().toISOString()
+    })
+  );
+
+  activeWallet = wallet;
+  return wallet;
+};
+
+// Sign a transaction locally and broadcast it
+export const signAndBroadcast = async (unsignedTransaction) => {
+  if (!activeWallet) throw new Error("Wallet is locked. Please enter password.");
+
+  const signedTx = await activeWallet.signTransaction(unsignedTransaction);
+  
+  const token = localStorage.getItem('authToken');
+  const res = await axios.post(`${API_BASE}/broadcast`, {
+    signedTransaction: signedTx
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  return res.data;
 };
