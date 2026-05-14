@@ -48,7 +48,36 @@ export const saveWalletToVault = async (privateKey, password) => {
   }
 };
 
+export const getWalletFromVault = async (address, password) => {
+  const vault = JSON.parse(localStorage.getItem(VAULT_KEY) || '[]');
+  const entry = vault.find(v => v.address.toLowerCase() === address.toLowerCase());
+  
+  if (!entry) throw new Error('Wallet not found in vault');
+  
+  try {
+    const wallet = await ethers.Wallet.fromEncryptedJson(entry.encrypted, password);
+    return wallet;
+  } catch (error) {
+    throw new Error('Invalid password');
+  }
+};
 
+/**
+ * Lists all public addresses stored in the vault
+ */
+export const getVaultAddresses = () => {
+  const vault = JSON.parse(localStorage.getItem(VAULT_KEY) || '[]');
+  return vault.map(v => v.address);
+};
+
+/**
+ * Removes a wallet from the local vault
+ */
+export const removeWalletFromVault = (address) => {
+  let vault = JSON.parse(localStorage.getItem(VAULT_KEY) || '[]');
+  vault = vault.filter(v => v.address.toLowerCase() !== address.toLowerCase());
+  localStorage.setItem(VAULT_KEY, JSON.stringify(vault));
+};
 
 export const loginVault = async (email, password) => {
   const res = await axios.post(`${API_BASE}/auth/login`, {
