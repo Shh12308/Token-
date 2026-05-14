@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 import { faArrowLeft, faCheck, faCopy, faExclamationTriangle, faShieldHalved } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import BottomNav from '../components/BottomNav';
-import { saveWalletToVault } from '../utils/keyManager';
+import { saveWalletToVault } from '../utils/keymanager';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
