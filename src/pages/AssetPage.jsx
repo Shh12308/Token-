@@ -57,7 +57,7 @@ const AssetPage = () => {
 
     try {
       // 1. Get Balance & Price
-      const balRes = await axios.get(${API_BASE}/balances, {
+      const balRes = await axios.get(${API_BASE}/balances, (
         headers: { Authorization: Bearer ${token} },
       });
 
