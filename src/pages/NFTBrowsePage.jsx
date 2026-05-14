@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ethers } from 'ethers';
-import { 
-  faSearch, faFilter, faArrowLeft, faHeart, faExternalLinkAlt, 
-  faTag, faClock, faFire, faGem, faLock, faExclamationTriangle 
+import {
+  faSearch, faFilter, faArrowLeft, faHeart, faExternalLinkAlt,
+  faTag, faClock, faFire, faGem, faLock, faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getWalletFromVault } from '../utils/Keymanager';
@@ -33,11 +33,10 @@ const NFTBrowsePage = () => {
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [buying, setBuying] = useState(false);
 
-  // ── Independent Vault Signing State ─────────────────
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [vaultPassword, setVaultPassword] = useState('');
   const [signError, setSignError] = useState('');
-  const [pendingAction, setPendingAction] = useState(null); // stores { listingId, unsignedTx, transactionId }
+  const [pendingAction, setPendingAction] = useState(null);
 
   const categories = ['all', 'art', 'gaming', 'music', 'photography', 'pfp', 'collectibles'];
 
@@ -96,7 +95,6 @@ const NFTBrowsePage = () => {
       const { unsignedTransaction, transaction } = res.data;
 
       if (unsignedTransaction) {
-        // Store the pending action and ask for vault password
         setPendingAction({
           listingId,
           unsignedTransaction,
@@ -127,17 +125,15 @@ const NFTBrowsePage = () => {
 
     try {
       const { unsignedTransaction, transactionId } = pendingAction;
-      
-      // 1. Get the user's wallet address from backend
+
       const token = localStorage.getItem('authToken');
       const walletRes = await axios.get(`${API_BASE}/wallets`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       const primaryWallet = walletRes.data.wallets?.find(w => w.blockchain === 'ethereum') || walletRes.data.wallets?.[0];
       if (!primaryWallet) throw new Error('No wallet found');
 
-      // 2. Decrypt private key from local vault
       let wallet;
       try {
         wallet = await getWalletFromVault(primaryWallet.address, vaultPassword);
@@ -145,12 +141,10 @@ const NFTBrowsePage = () => {
         throw new Error('Incorrect password. Please try again.');
       }
 
-      // 3. Connect wallet to provider for signing
       const rpcUrl = process.env.REACT_APP_ETH_RPC_URL || 'https://eth-mainnet.g.alchemy.com/v2/demo';
       const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
       const connectedWallet = wallet.connect(provider);
 
-      // 4. Sign the transaction locally (this is the MetaMask replacement)
       const tx = await connectedWallet.sendTransaction({
         to: unsignedTransaction.to,
         value: unsignedTransaction.value,
@@ -161,13 +155,11 @@ const NFTBrowsePage = () => {
         chainId: unsignedTransaction.chainId || 1,
       });
 
-      // 5. Broadcast confirmation to backend
       await axios.post(`${API_BASE}/nft/broadcast`, {
         transactionId,
         txHash: tx.hash,
       }, { headers: { Authorization: `Bearer ${token}` } });
 
-      // 6. Success
       setShowPasswordModal(false);
       setPendingAction(null);
       setVaultPassword('');
@@ -186,6 +178,19 @@ const NFTBrowsePage = () => {
     if (!price) return '—';
     const num = parseFloat(price);
     return num > 0.001 ? num.toFixed(4) : num.toExponential(2);
+  };
+
+  // ── Handle modal action based on NFT type ────────────
+  const handleModalAction = () => {
+    if (!selectedNFT) return;
+
+    if (selectedNFT.canBuy) {
+      // Marketplace listing — initiate buy flow
+      requestBuyNFT(selectedNFT.id);
+    } else if (selectedNFT.openSeaUrl) {
+      // External NFT — open on OpenSea
+      window.open(selectedNFT.openSeaUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
   return (
@@ -350,9 +355,19 @@ const NFTBrowsePage = () => {
                   <div className="nft-title-gold">{nft.name || `#${nft.tokenId}`}</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
                     <div className="nft-price-gold">
-                      {nft.price ? `${formatPrice(nft.price)} ${nft.currency || 'ETH'}` : 'Not Listed'}
+                      {nft.price ? (
+                        <>
+                          {nft.listingType === 'floor' && (
+                            <span style={{ fontSize: '0.6rem', color: '#888', marginRight: '3px' }}>Floor</span>
+                          )}
+                          {formatPrice(nft.price)} {nft.currency || 'ETH'}
+                        </>
+                      ) : (
+                        <span style={{ color: '#666', fontSize: '0.75rem' }}>Not Listed</span>
+                      )}
                     </div>
-                    {nft.price && (
+                    {/* ── Action button based on NFT type ── */}
+                    {nft.canBuy && nft.price && (
                       <button
                         className="btn-gold-sm"
                         onClick={(e) => { e.stopPropagation(); requestBuyNFT(nft.id); }}
@@ -360,6 +375,26 @@ const NFTBrowsePage = () => {
                       >
                         Buy
                       </button>
+                    )}
+                    {!nft.canBuy && nft.openSeaUrl && (
+                      <a
+                        href={nft.openSeaUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="btn-gold-sm"
+                        style={{
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          background: 'rgba(56, 189, 248, 0.2)',
+                          color: '#38bdf8',
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faExternalLinkAlt} style={{ fontSize: '0.6rem' }} />
+                        OpenSea
+                      </a>
                     )}
                   </div>
                 </div>
@@ -385,7 +420,7 @@ const NFTBrowsePage = () => {
       </main>
 
       {/* ═══════════════════════════════════════════════════════
-          BUY MODAL - Shows NFT details, then requests signature
+          BUY / VIEW MODAL — Handles both marketplace & external
           ═══════════════════════════════════════════════════════ */}
       {showBuyModal && selectedNFT && (
         <div style={{
@@ -396,46 +431,112 @@ const NFTBrowsePage = () => {
             background: '#1a1a1a', borderRadius: '16px', padding: '20px',
             width: '90%', maxWidth: '400px', border: '1px solid #333',
           }} onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, color: '#d4af37' }}>Purchase NFT</h3>
+              <h3 style={{ margin: 0, color: '#d4af37' }}>
+                {selectedNFT.canBuy ? 'Purchase NFT' : 'NFT Details'}
+              </h3>
               <button onClick={() => setShowBuyModal(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>
                 &times;
               </button>
             </div>
+
+            {/* NFT Info */}
             <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
               <img
                 src={selectedNFT.image || `https://picsum.photos/seed/${selectedNFT.id}/150/150`}
                 alt={selectedNFT.name}
                 style={{ width: '100px', height: '100px', borderRadius: '12px', objectFit: 'cover' }}
               />
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ color: '#888', fontSize: '0.8rem' }}>{selectedNFT.collectionName}</div>
-                <div style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 'bold' }}>{selectedNFT.name}</div>
+                <div style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '4px', wordBreak: 'break-word' }}>
+                  {selectedNFT.name}
+                </div>
                 {selectedNFT.price && (
-                  <div style={{ color: '#d4af37', fontSize: '1.2rem', marginTop: '8px' }}>
+                  <div style={{ color: '#d4af37', fontSize: '1.2rem', fontWeight: 600 }}>
+                    {selectedNFT.listingType === 'floor' && (
+                      <span style={{ fontSize: '0.7rem', color: '#888', marginRight: '4px' }}>Floor</span>
+                    )}
                     {formatPrice(selectedNFT.price)} {selectedNFT.currency || 'ETH'}
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Source badge */}
+            <div style={{
+              background: selectedNFT.canBuy
+                ? 'rgba(34,197,94,0.1)'
+                : 'rgba(56,189,248,0.1)',
+              border: `1px solid ${selectedNFT.canBuy ? 'rgba(34,197,94,0.2)' : 'rgba(56,189,248,0.2)'}`,
+              borderRadius: '8px', padding: '10px 12px', marginBottom: '12px',
+            }}>
+              <p style={{
+                color: selectedNFT.canBuy ? '#4ade80' : '#38bdf8',
+                fontSize: '0.75rem', margin: 0, lineHeight: 1.5,
+              }}>
+                {selectedNFT.canBuy ? (
+                  <>✅ Listed on BlockVault Marketplace — You can purchase this NFT directly.</>
+                ) : selectedNFT.openSeaUrl ? (
+                  <>🔗 Sourced from blockchain — This NFT can be purchased on OpenSea.</>
+                ) : (
+                  <>📋 This NFT is not currently listed for sale on any marketplace.</>
+                )}
+              </p>
+            </div>
+
+            {/* Attributes (if any) */}
+            {selectedNFT.attributes?.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ color: '#888', fontSize: '0.7rem', marginBottom: '6px', textTransform: 'uppercase', fontWeight: 600 }}>Attributes</div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {selectedNFT.attributes.slice(0, 6).map((attr, i) => (
+                    <div key={i} style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px', padding: '4px 8px', textAlign: 'center',
+                    }}>
+                      <div style={{ fontSize: '0.55rem', color: '#888' }}>{attr.trait_type || attr.type || '?'}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#ddd' }}>{attr.value || '?'}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action Button */}
             <button
               className="btn-gold"
-              style={{ width: '100%', padding: '12px', fontSize: '1rem' }}
-              onClick={() => requestBuyNFT(selectedNFT.id)}
-              disabled={buying || !selectedNFT.price}
+              style={{
+                width: '100%', padding: '12px', fontSize: '1rem',
+                // Override gradient for OpenSea button
+                ...(selectedNFT.openSeaUrl && !selectedNFT.canBuy ? {
+                  background: 'linear-gradient(135deg, #38bdf8, #0ea5e9)',
+                } : {}),
+              }}
+              onClick={handleModalAction}
+              disabled={buying || (!selectedNFT.canBuy && !selectedNFT.openSeaUrl)}
             >
-              {buying ? 'Preparing...' : (selectedNFT.price ? `Buy for ${formatPrice(selectedNFT.price)} ${selectedNFT.currency || 'ETH'}` : 'Not for sale')}
+              {selectedNFT.canBuy
+                ? (buying ? 'Preparing...' : `Buy for ${formatPrice(selectedNFT.price)} ${selectedNFT.currency || 'ETH'}`)
+                : selectedNFT.openSeaUrl
+                  ? (<><FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginRight: '6px' }} />View on OpenSea</>)
+                  : 'Not for sale'
+              }
             </button>
             <p style={{ fontSize: '0.7rem', color: '#666', marginTop: '8px', textAlign: 'center' }}>
-              🔐 Non-custodial: Signed locally with your BlockVault key. We never hold your funds.
+              {selectedNFT.canBuy
+                ? '🔐 Non-custodial: Signed locally with your BlockVault key.'
+                : 'Purchases on OpenSea are handled by their smart contracts.'
+              }
             </p>
           </div>
         </div>
       )}
 
       {/* ═══════════════════════════════════════════════════════
-          PASSWORD MODAL - Replaces MetaMask popup!
-          User enters vault password to decrypt key & sign tx
+          PASSWORD MODAL — Only for marketplace purchases
           ═══════════════════════════════════════════════════════ */}
       {showPasswordModal && (
         <div style={{
@@ -446,7 +547,6 @@ const NFTBrowsePage = () => {
             background: '#111', borderRadius: '16px', padding: '24px',
             width: '90%', maxWidth: '380px', border: '1px solid #d4af37',
           }}>
-            {/* Header */}
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
               <div style={{
                 width: 56, height: 56, borderRadius: '50%',
@@ -461,7 +561,6 @@ const NFTBrowsePage = () => {
               </p>
             </div>
 
-            {/* Transaction details */}
             {pendingAction && (
               <div style={{
                 background: '#1a1a1a', borderRadius: 10, padding: 14,
@@ -484,18 +583,16 @@ const NFTBrowsePage = () => {
               </div>
             )}
 
-            {/* Security notice */}
             <div style={{
               background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)',
               borderRadius: 8, padding: '10px 12px', marginBottom: 16,
             }}>
               <p style={{ color: '#4ade80', fontSize: 11, margin: 0, lineHeight: 1.5 }}>
                 <FontAwesomeIcon icon={faLock} style={{ marginRight: 6 }} />
-                Your private key is decrypted locally and never leaves this device. This replaces MetaMask.
+                Your private key is decrypted locally and never leaves this device.
               </p>
             </div>
 
-            {/* Error display */}
             {signError && (
               <div style={{
                 background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.3)',
@@ -508,7 +605,6 @@ const NFTBrowsePage = () => {
               </div>
             )}
 
-            {/* Password input */}
             <div style={{ marginBottom: 20 }}>
               <label style={{ color: '#aaa', fontSize: 12, marginBottom: 6, display: 'block' }}>
                 Wallet Password
@@ -528,7 +624,6 @@ const NFTBrowsePage = () => {
               />
             </div>
 
-            {/* Action buttons */}
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={() => {
