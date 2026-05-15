@@ -7,10 +7,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import BottomNav from '../components/BottomNav';
 import { saveWalletToVault } from '../utils/Keymanager';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
+const API_BASE =
+  process.env.REACT_APP_API_URL ||
+  'https://blockvault-backend-production.up.railway.app/api';
 
 const ImportWalletPage = () => {
   const navigate = useNavigate();
+
   const [tab, setTab] = useState('phrase'); // phrase | key
   const [phrase, setPhrase] = useState('');
   const [privateKey, setPrivateKey] = useState('');
@@ -26,6 +29,7 @@ const ImportWalletPage = () => {
     if (password.length < 8) {
       return setError('Password must be at least 8 characters');
     }
+
     if (password !== confirmPassword) {
       return setError('Passwords do not match');
     }
@@ -35,44 +39,69 @@ const ImportWalletPage = () => {
     try {
       let walletInstance;
 
-      // 1. Derive wallet locally
+      // 🔐 Seed phrase import (ethers v6 correct method)
       if (tab === 'phrase') {
-        if (!phrase.trim()) return setError('Please enter a seed phrase');
-        walletInstance = ethers.Wallet.fromMnemonic(phrase.trim());
-      } else {
-        if (!privateKey.trim()) return setError('Please enter a private key');
-        // Ensure 0x prefix
+        if (!phrase.trim()) {
+          setLoading(false);
+          return setError('Please enter a seed phrase');
+        }
+
+        walletInstance = ethers.Wallet.fromPhrase(phrase.trim());
+      }
+
+      // 🔑 Private key import
+      else {
+        if (!privateKey.trim()) {
+          setLoading(false);
+          return setError('Please enter a private key');
+        }
+
         let formattedKey = privateKey.trim();
-        if (!formattedKey.startsWith('0x')) formattedKey = `0x${formattedKey}`;
+
+        if (!formattedKey.startsWith('0x')) {
+          formattedKey = `0x${formattedKey}`;
+        }
+
         walletInstance = new ethers.Wallet(formattedKey);
       }
 
       const address = walletInstance.address;
 
-      // 2. Encrypt and save to local vault (MetaMask style)
+      // 🔒 Encrypt locally
       await saveWalletToVault(walletInstance.privateKey, password);
 
-      // 3. Register public address with backend
+      // 🌐 Register backend
       const token = localStorage.getItem('authToken');
-      await axios.post(`${API_BASE}/wallets/import`, {
-        address,
-        blockchain: 'ethereum',
-        label: 'Imported Wallet',
-        walletType: 'created', // It's locally managed now
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+
+      await axios.post(
+        `${API_BASE}/wallets/import`,
+        {
+          address,
+          blockchain: 'ethereum',
+          label: 'Imported Wallet',
+          walletType: 'created'
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
 
       navigate('/app');
-
     } catch (err) {
       console.error('Import error:', err);
-      if (err.message.includes('invalid mnemonic')) {
+
+      const msg = err?.message || '';
+
+      if (msg.includes('mnemonic') || msg.includes('phrase')) {
         setError('Invalid seed phrase. Check for typos.');
-      } else if (err.message.includes('invalid private key')) {
+      } else if (msg.includes('private')) {
         setError('Invalid private key format.');
       } else {
-        setError(err.response?.data?.message || err.message || 'Failed to import wallet');
+        setError(
+          err?.response?.data?.message ||
+            msg ||
+            'Failed to import wallet'
+        );
       }
     } finally {
       setLoading(false);
@@ -90,13 +119,23 @@ const ImportWalletPage = () => {
       </header>
 
       <main className="main-scroll-area-gold" style={{ padding: 20 }}>
-        <div style={{
-          background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)',
-          borderRadius: 8, padding: 16, marginBottom: 24,
-        }}>
+        {/* Warning */}
+        <div
+          style={{
+            background: 'rgba(245,158,11,0.1)',
+            border: '1px solid rgba(245,158,11,0.3)',
+            borderRadius: 8,
+            padding: 16,
+            marginBottom: 24
+          }}
+        >
           <p style={{ color: '#fbbf24', fontSize: 13, margin: 0 }}>
-            <FontAwesomeIcon icon={faExclamationTriangle} style={{ marginRight: 8 }} />
-            Your secret recovery phrase and private keys <strong>never</strong> leave this device. They are encrypted locally.
+            <FontAwesomeIcon
+              icon={faExclamationTriangle}
+              style={{ marginRight: 8 }}
+            />
+            Your secret recovery phrase and private keys{' '}
+            <strong>never</strong> leave this device. They are encrypted locally.
           </p>
         </div>
 
@@ -104,17 +143,27 @@ const ImportWalletPage = () => {
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           {[
             { id: 'phrase', label: 'Seed Phrase', icon: faSeedling },
-            { id: 'key', label: 'Private Key', icon: faKey },
-          ].map(t => (
+            { id: 'key', label: 'Private Key', icon: faKey }
+          ].map((t) => (
             <button
               key={t.id}
-              onClick={() => { setTab(t.id); setError(''); }}
+              onClick={() => {
+                setTab(t.id);
+                setError('');
+              }}
               style={{
-                flex: 1, padding: 12, borderRadius: 8, border: 'none',
-                background: tab === t.id ? 'rgba(201,168,76,0.2)' : '#1a1a1a',
+                flex: 1,
+                padding: 12,
+                borderRadius: 8,
+                background:
+                  tab === t.id ? 'rgba(201,168,76,0.2)' : '#1a1a1a',
                 color: tab === t.id ? '#c9a84c' : '#888',
-                cursor: 'pointer', fontSize: 14,
-                border: tab === t.id ? '1px solid #c9a84c' : '1px solid #333',
+                cursor: 'pointer',
+                fontSize: 14,
+                border:
+                  tab === t.id
+                    ? '1px solid #c9a84c'
+                    : '1px solid #333'
               }}
             >
               <FontAwesomeIcon icon={t.icon} style={{ marginRight: 6 }} />
@@ -123,21 +172,38 @@ const ImportWalletPage = () => {
           ))}
         </div>
 
+        {/* Error */}
         {error && (
-          <div style={{
-            background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.4)',
-            color: '#fca5a5', padding: '12px 16px', borderRadius: 8, marginBottom: 16, fontSize: 13,
-          }}>
+          <div
+            style={{
+              background: 'rgba(220,38,38,0.15)',
+              border: '1px solid rgba(220,38,38,0.4)',
+              color: '#fca5a5',
+              padding: '12px 16px',
+              borderRadius: 8,
+              marginBottom: 16,
+              fontSize: 13
+            }}
+          >
             {error}
           </div>
         )}
 
+        {/* Form */}
         <form onSubmit={handleImport}>
           {tab === 'phrase' ? (
             <div style={{ marginBottom: 16 }}>
-              <label style={{ color: '#aaa', fontSize: 12, marginBottom: 4, display: 'block' }}>
+              <label
+                style={{
+                  color: '#aaa',
+                  fontSize: 12,
+                  marginBottom: 4,
+                  display: 'block'
+                }}
+              >
                 Secret Recovery Phrase (12 or 24 words)
               </label>
+
               <textarea
                 value={phrase}
                 onChange={(e) => setPhrase(e.target.value)}
@@ -145,17 +211,31 @@ const ImportWalletPage = () => {
                 rows={4}
                 required
                 style={{
-                  width: '100%', padding: 14, background: '#1a1a1a',
-                  border: '1px solid #333', borderRadius: 8, color: '#fff',
-                  fontSize: 14, outline: 'none', resize: 'vertical',
+                  width: '100%',
+                  padding: 14,
+                  background: '#1a1a1a',
+                  border: '1px solid #333',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 14,
+                  outline: 'none',
+                  resize: 'vertical'
                 }}
               />
             </div>
           ) : (
             <div style={{ marginBottom: 16 }}>
-              <label style={{ color: '#aaa', fontSize: 12, marginBottom: 4, display: 'block' }}>
+              <label
+                style={{
+                  color: '#aaa',
+                  fontSize: 12,
+                  marginBottom: 4,
+                  display: 'block'
+                }}
+              >
                 Private Key
               </label>
+
               <input
                 type="password"
                 value={privateKey}
@@ -163,18 +243,32 @@ const ImportWalletPage = () => {
                 placeholder="0x..."
                 required
                 style={{
-                  width: '100%', padding: 14, background: '#1a1a1a',
-                  border: '1px solid #333', borderRadius: 8, color: '#fff',
-                  fontSize: 14, outline: 'none',
+                  width: '100%',
+                  padding: 14,
+                  background: '#1a1a1a',
+                  border: '1px solid #333',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 14,
+                  outline: 'none'
                 }}
               />
             </div>
           )}
 
+          {/* Password */}
           <div style={{ marginBottom: 16 }}>
-            <label style={{ color: '#aaa', fontSize: 12, marginBottom: 4, display: 'block' }}>
+            <label
+              style={{
+                color: '#aaa',
+                fontSize: 12,
+                marginBottom: 4,
+                display: 'block'
+              }}
+            >
               Local Encryption Password
             </label>
+
             <input
               type="password"
               value={password}
@@ -182,17 +276,31 @@ const ImportWalletPage = () => {
               placeholder="Create a password to encrypt this wallet locally"
               required
               style={{
-                width: '100%', padding: 14, background: '#1a1a1a',
-                border: '1px solid #333', borderRadius: 8, color: '#fff',
-                fontSize: 14, outline: 'none',
+                width: '100%',
+                padding: 14,
+                background: '#1a1a1a',
+                border: '1px solid #333',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: 14,
+                outline: 'none'
               }}
             />
           </div>
 
+          {/* Confirm Password */}
           <div style={{ marginBottom: 24 }}>
-            <label style={{ color: '#aaa', fontSize: 12, marginBottom: 4, display: 'block' }}>
+            <label
+              style={{
+                color: '#aaa',
+                fontSize: 12,
+                marginBottom: 4,
+                display: 'block'
+              }}
+            >
               Confirm Password
             </label>
+
             <input
               type="password"
               value={confirmPassword}
@@ -200,9 +308,14 @@ const ImportWalletPage = () => {
               placeholder="Confirm your encryption password"
               required
               style={{
-                width: '100%', padding: 14, background: '#1a1a1a',
-                border: '1px solid #333', borderRadius: 8, color: '#fff',
-                fontSize: 14, outline: 'none',
+                width: '100%',
+                padding: 14,
+                background: '#1a1a1a',
+                border: '1px solid #333',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: 14,
+                outline: 'none'
               }}
             />
           </div>
@@ -211,15 +324,22 @@ const ImportWalletPage = () => {
             type="submit"
             disabled={loading}
             style={{
-              width: '100%', padding: 14, background: '#c9a84c',
-              border: 'none', borderRadius: 8, color: '#000',
-              fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              width: '100%',
+              padding: 14,
+              background: '#c9a84c',
+              border: 'none',
+              borderRadius: 8,
+              color: '#000',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer'
             }}
           >
             {loading ? 'Importing & Encrypting...' : 'Import Wallet'}
           </button>
         </form>
       </main>
+
       <BottomNav />
     </div>
   );
