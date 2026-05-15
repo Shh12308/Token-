@@ -56,7 +56,7 @@
     "wagmi": "^2.12.0",
     "viem": "^2.21.0",
     "@web3modal/wagmi": "^4.2.3",
-    "@web3modal/react": "^4.1.1"
+    "@web3modal/react": "^3.1.0"
   },
   "devDependencies": {
     "vite": "^4.5.14",
