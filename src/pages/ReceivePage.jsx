@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { faArrowLeft, faCopy, faQrcode, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // Note: You would typically install this: npm install qrcode.react
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeSVG } from 'react-qr-code';
 
 const ReceivePage = () => {
   const navigate = useNavigate();
