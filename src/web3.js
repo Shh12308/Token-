@@ -2,7 +2,7 @@ import { createAppKit } from '@reown/appkit'
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
 import { mainnet } from 'wagmi/chains'
 
-const projectId = 'YOUR_REAL_PROJECT_ID'
+const projectId = 'bf6e2d08dd50b5a337ceb5cb9203bb5d'
 
 const wagmiAdapter = new WagmiAdapter({
   networks: [mainnet],
