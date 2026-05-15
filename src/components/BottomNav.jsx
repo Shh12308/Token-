@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  faWallet, faGlobe, faArrowUp, faRepeat, faPlus, faGear, faCash
+  faWallet, faGlobe, faArrowUp, faRepeat, faPlus, faGear, faHandHoldingDollar
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -19,7 +19,7 @@ const BottomNav = () => {
     { path: '/send', icon: faArrowUp, label: 'Send' },
     { path: '/swap', icon: faRepeat, label: 'Swap' },
     { path: '/buy', icon: faPlus, label: 'Buy' },
-    { path: '/receive', icon: faCash, label: 'Buy' },
+    { path: '/receive', icon: faHandHoldingDollar, label: 'Receive' },
     { path: '/settings', icon: faGear, label: 'Settings' },
   ];
 
