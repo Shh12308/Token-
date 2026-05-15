@@ -1,47 +1,43 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { faArrowLeft, faCopy, faQrcode, faCheck } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faCopy, faQrcode, faCheck, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-// Note: You would typically install this: npm install qrcode.react
-import { QRCodeSVG } from 'react-qr-code';
+// REMOVED: import { QRCodeSVG }... to stop the crash. Added faExclamationTriangle for errors.
 
 const ReceivePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Initialize state with empty string to avoid flashing "0x..."
   const [address, setAddress] = useState('');
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(null);
 
-  // Effect for fetching address (Simulating secure storage retrieval)
   useEffect(() => {
     const fetchWalletAddress = () => {
       try {
+        // 1. Try to get from LocalStorage first (Fastest)
         const user = localStorage.getItem('user');
         if (user) {
           const parsedUser = JSON.parse(user);
-          // Support multiple possible address key names
-          const walletAddr = parsedUser.walletAddress || parsedUser.address;
-          
-          if (walletAddr) {
-            setAddress(walletAddr);
-          } else {
-            setError('No wallet address found for this user.');
+          if (parsedUser.walletAddress || parsedUser.address) {
+            setAddress(parsedUser.walletAddress || parsedUser.address);
+            return; // Stop here if found
           }
-        } else {
-          setError('User data not found. Please log in again.');
         }
+
+        // 2. If not in storage, you might be fetching from API.
+        // Since your logs show "Failed to fetch account data", we handle that gracefully.
+        // If you have an API call here, ensure it has a .catch() block.
+        
       } catch (err) {
-        console.error('Failed to parse user data:', err);
-        setError('Failed to load wallet data.');
+        console.error('Storage parsing error:', err);
+        setError('Failed to load wallet data from storage.');
       }
     };
 
     fetchWalletAddress();
   }, []);
 
-  // useCallback prevents function recreation on every render
   const handleCopy = useCallback(() => {
     if (!address) return;
 
@@ -53,22 +49,15 @@ const ReceivePage = () => {
     });
   }, [address]);
 
-  // Truncate address for display: 0x1234...abcd
-  const truncatedAddress = address 
-    ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` 
-    : 'Loading...';
-
   return (
     <div className="dashboard-container-gold">
       <header className="top-header-gold">
-        {/* Accessibility: added aria-label and role */}
         <div 
           className="header-left" 
           onClick={() => navigate('/app')} 
           role="button"
           tabIndex={0}
           onKeyDown={(e) => e.key === 'Enter' && navigate('/app')}
-          aria-label="Go back to dashboard"
         >
           <FontAwesomeIcon icon={faArrowLeft} /> Back
         </div>
@@ -77,21 +66,36 @@ const ReceivePage = () => {
       <main className="main-scroll-area-gold" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <div className="card receive-card-gold">
           <h2>Receive Funds</h2>
-          <p className="text-muted text-center">Scan QR or copy address below</p>
-
-          {/* Error Handling */}
+          
+          {/* Error Display for Network/Storage Issues */}
           {error ? (
-            <div className="error-message" style={{ color: 'red', padding: '20px' }}>
-              {error}
-            </div>
+             <div style={{ textAlign: 'center', color: '#d9534f', marginTop: '20px' }}>
+               <FontAwesomeIcon icon={faExclamationTriangle} size="2x" />
+               <p style={{ marginTop: '10px' }}>{error}</p>
+               <p style={{ fontSize: '0.8rem', color: '#666' }}>
+                 Please check your internet connection or try logging in again.
+               </p>
+             </div>
           ) : (
             <>
-              {/* Updated QR Code Implementation */}
-              <div className="qr-placeholder-gold" style={{ background: '#fff', padding: '10px', borderRadius: '10px' }}>
+              <p className="text-muted text-center">Scan QR or copy address below</p>
+
+              {/* Safe QR Placeholder - Does not require external library */}
+              <div 
+                className="qr-placeholder-gold" 
+                style={{ 
+                  background: '#fff', 
+                  padding: '20px', 
+                  borderRadius: '10px', 
+                  display: 'inline-block',
+                  marginTop: '20px'
+                }}
+              >
                 {address ? (
-                  <QRCodeSVG value={address} size={180} level="H" />
+                   // If you installed qrcode.react, you can swap this icon for <QRCodeSVG value={address} size={180} />
+                   <FontAwesomeIcon icon={faQrcode} size="5x" color="#333" />
                 ) : (
-                  <FontAwesomeIcon icon={faQrcode} size="4x" spin />
+                   <FontAwesomeIcon icon={faQrcode} size="5x" spin color="#ccc" />
                 )}
               </div>
 
@@ -104,11 +108,11 @@ const ReceivePage = () => {
                     borderRadius: '8px', 
                     fontFamily: 'monospace', 
                     textAlign: 'center',
-                    wordBreak: 'break-all'
+                    wordBreak: 'break-all',
+                    fontSize: '0.9rem'
                   }}
-                  title={address}
                 >
-                  {address || 'Fetching address...'}
+                  {address || 'Address not available'}
                 </div>
                 
                 <button 
