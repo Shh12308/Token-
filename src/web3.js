@@ -1,19 +1,22 @@
-import { createConfig, http } from 'wagmi';
-import { mainnet } from 'wagmi/chains';
-import { walletConnect } from '@wagmi/connectors';
+import { createAppKit } from '@reown/appkit'
+import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
+import { mainnet } from 'wagmi/chains'
 
-// ⚠️ Replace this with your real WalletConnect Project ID
-const projectId = 'YOUR_PROJECT_ID';
+const projectId = 'YOUR_REAL_PROJECT_ID'
 
-export const config = createConfig({
-  chains: [mainnet],
-  connectors: [
-    walletConnect({
-      projectId,
-      showQrModal: true
-    })
-  ],
-  transports: {
-    [mainnet.id]: http()
+const wagmiAdapter = new WagmiAdapter({
+  networks: [mainnet],
+  projectId
+})
+
+export const modal = createAppKit({
+  adapters: [wagmiAdapter],
+  projectId,
+  networks: [mainnet],
+  metadata: {
+    name: 'CryptoBean',
+    description: 'Crypto Wallet App',
+    url: 'https://your-site.com',
+    icons: []
   }
-});
+})
