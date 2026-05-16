@@ -1,4 +1,4 @@
-import { createAppKit } from '@reown/appkit'
+import { createWeb3Modal } from '@web3modal/wagmi/react'
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
 import { mainnet } from 'wagmi/chains'
 
