@@ -3,9 +3,8 @@ import { BrowserRouter as Router } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store';
 
-// 🆕 ADD THESE
 import { WagmiConfig } from 'wagmi';
-import { config } from './web3';
+import { wagmiConfig } from './web3';
 
 // Providers
 import { AuthProvider } from './context/AuthContext';
@@ -21,8 +20,7 @@ import AppRoutes from './routes/routes';
 const App = () => {
   return (
     <Provider store={store}>
-      {/* 🆕 WALLET LAYER */}
-      <WagmiConfig config={config}>
+      <WagmiConfig config={wagmiConfig}>
         <Router>
           <ThemeProvider>
             <AuthProvider>
