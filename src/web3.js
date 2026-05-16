@@ -1,22 +1,26 @@
 import { createWeb3Modal } from '@web3modal/wagmi/react'
-import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
+import { defaultWagmiConfig } from '@web3modal/wagmi/react/config'
 import { mainnet } from 'wagmi/chains'
 
 const projectId = 'bf6e2d08dd50b5a337ceb5cb9203bb5d'
 
-const wagmiAdapter = new WagmiAdapter({
-  networks: [mainnet],
-  projectId
+const metadata = {
+  name: 'CryptoBean',
+  description: 'Crypto Wallet App',
+  url: 'https://token-six-gamma.vercel.app',
+  icons: []
+}
+
+const chains = [mainnet]
+
+export const wagmiConfig = defaultWagmiConfig({
+  chains,
+  projectId,
+  metadata
 })
 
-export const modal = createAppKit({
-  adapters: [wagmiAdapter],
+export const modal = createWeb3Modal({
+  wagmiConfig,
   projectId,
-  networks: [mainnet],
-  metadata: {
-    name: 'CryptoBean',
-    description: 'Crypto Wallet App',
-    url: 'https://your-site.com',
-    icons: []
-  }
+  chains
 })
