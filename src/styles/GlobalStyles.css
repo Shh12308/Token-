@@ -117,6 +117,10 @@ button {
   filter: none;
 }
 
+.btn-full {
+  width: 100%;
+}
+
 .btn-gold-sm {
   appearance: none;
   border: none;
@@ -423,7 +427,7 @@ input[type="checkbox"]:checked::after {
 
 .main-scroll-area-gold {
   flex: 1;
-  padding: 12px 0;
+  padding: 12px 20px;
   max-width: 600px;
   width: 100%;
   margin: 0 auto;
@@ -471,6 +475,47 @@ input[type="checkbox"]:checked::after {
 .nav-item-gold.active .nav-icon-gold {
   transform: translateY(-2px);
   color: var(--primary-gold);
+}
+
+/* ==========================================
+   QUICK ACTIONS (Send / Receive / Swap)
+   ========================================== */
+.quick-actions-gold {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 16px 10px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: var(--primary-gold);
+}
+
+.action-btn svg {
+  font-size: 20px;
+}
+
+.action-btn span {
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* ==========================================
@@ -920,6 +965,31 @@ input::placeholder, textarea::placeholder {
   margin-bottom: 16px;
 }
 
+.balance-actions-gold {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tag-gold {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--primary-gold);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.assets-section-gold {
+  margin-top: 24px;
+}
+
+.assets-section-gold h3 {
+  margin-bottom: 16px;
+  font-size: 18px;
+}
+
 .assets-list-gold {
   display: flex;
   flex-direction: column;
@@ -934,31 +1004,59 @@ input::placeholder, textarea::placeholder {
   padding: 16px;
   border-radius: 16px;
   cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
 }
 
 .asset-item-gold:hover {
   background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(245, 158, 11, 0.2);
 }
 
-.asset-left-gold {
+.asset-left {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.asset-icon-gold {
+.asset-icon {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(245, 158, 11, 0.08);
+  background: rgba(245, 158, 11, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  color: var(--primary-gold);
+  font-weight: bold;
 }
 
-.asset-change-gold.positive { color: #00e676; }
-.asset-change-gold.negative { color: #ff4d4d; }
+.asset-name {
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 15px;
+}
+
+.asset-balance {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.asset-right {
+  text-align: right;
+}
+
+.asset-value {
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 15px;
+}
+
+.asset-change {
+  font-size: 12px;
+  margin-top: 2px;
+}
 
 /* Swap & Send Styles */
 .swap-header-gold, .send-header-gold, .buy-header-gold {
@@ -990,6 +1088,64 @@ input::placeholder, textarea::placeholder {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* ==========================================
+   BUY PAGE PRESETS
+   ========================================== */
+.preset-btn {
+  flex: 1;
+  padding: 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-btn:hover {
+  border-color: var(--primary-gold);
+  color: var(--primary-gold);
+}
+
+.preset-btn.active {
+  background: var(--primary-gold);
+  color: #000;
+  border-color: var(--primary-gold);
+  font-weight: 600;
+}
+
+.secure-note-gold {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+/* ==========================================
+   LOADING STATES
+   ========================================== */
+.dashboard-loading-gold {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-dark);
+}
+
+.loader-gold {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(245, 158, 11, 0.1);
+  border-left-color: var(--primary-gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 /* ==========================================
