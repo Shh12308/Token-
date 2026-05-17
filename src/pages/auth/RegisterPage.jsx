@@ -8,23 +8,21 @@ import {
   copyToClipboard,
   deriveKeyFromPasscode,
   encryptData,
-  unlockLocalVault,
   isBiometricAvailable
 } from '../../utils/wallet';
 
 import { setSessionWallet } from '../../utils/session';
 
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
-
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 const STORAGE_KEY = 'wallet_encrypted';
 
 // ─────────────────────────────────────────────
-// Device-bound key
+// Device-bound Salt (Singleton pattern)
 // ─────────────────────────────────────────────
 const getDeviceSalt = () => {
   let salt = localStorage.getItem('device_salt');
   if (!salt) {
+    // Generate a UUID v4 salt
     salt = crypto.randomUUID();
     localStorage.setItem('device_salt', salt);
   }
@@ -68,16 +66,21 @@ const RegisterPage = () => {
     }
   }, [step]);
 
-  const verifySeed = () =>
-    seedPhrase[1] === confirm.w1 && seedPhrase[5] === confirm.w2;
+  const verifySeed = () => {
+    // Flexible verification: check indices 1 and 5 (0-indexed)
+    return (
+      seedPhrase[1]?.toLowerCase() === confirm.w1.toLowerCase() &&
+      seedPhrase[5]?.toLowerCase() === confirm.w2.toLowerCase()
+    );
+  };
 
   const nextStep = () => setStep((s) => Math.min(s + 1, 3));
   const prevStep = () => setStep((s) => Math.max(s - 1, 1));
 
   const handleCreateAccount = async () => {
-    if (!saved) return setError('Please confirm seed phrase saved.');
+    if (!saved) return setError('Please confirm you have saved your seed phrase.');
     if (passcode.length < 6) return setError('Passcode must be at least 6 digits.');
-    if (!verifySeed()) return setError('Seed verification failed.');
+    if (!verifySeed()) return setError('Seed verification failed. Words do not match.');
 
     setLoading(true);
     setError('');
@@ -85,47 +88,53 @@ const RegisterPage = () => {
     try {
       const phraseString = seedPhrase.join(' ');
 
+      // 1. Get Device Salt (Crucial for decryption later)
       const deviceSalt = getDeviceSalt();
+
+      // 2. Derive Encryption Key (Passcode + Salt)
       const key = await deriveKeyFromPasscode(passcode + deviceSalt);
 
+      // 3. Encrypt the Seed Phrase
       const encrypted = await encryptData(phraseString, key);
 
-      if (enableBiometric && isBiometricAvailable()) {
-        await unlockLocalVault();
-      }
-
+      // 4. Create Wallet Instance
       const wallet = ethers.Wallet.fromPhrase(phraseString);
 
+      // 5. Backend Auth (Stateless)
+      // Step A: Get Nonce
       const nonceRes = await axios.post(`${API_BASE_URL}/auth/nonce`, {
         walletAddress: wallet.address
       });
 
       const messageToSign = nonceRes.data.messageToSign;
 
+      // Step B: Sign Message
       const signature = await wallet.signMessage(messageToSign);
 
+      // Step C: Verify & Get JWT
       const authRes = await axios.post(`${API_BASE_URL}/auth/verify`, {
         walletAddress: wallet.address,
         signature,
         message: messageToSign
       });
 
+      // 6. Store Encrypted Vault (Local)
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
           address: wallet.address,
           encryptedSeed: encrypted.data,
           iv: encrypted.iv,
-          biometricEnabled: enableBiometric,
+          biometricEnabled: enableBiometric, // Save preference
           createdAt: new Date().toISOString()
         })
       );
 
-      setSessionWallet(wallet);
-
+      // 7. Set Session & Navigate
+      setSessionWallet(wallet); // In-memory session
       localStorage.setItem('authToken', authRes.data.token);
-      localStorage.setItem('walletAddress', wallet.address);
-
+      
+      // Cleanup sensitive state
       setSeedPhrase([]);
       setPasscode('');
 
@@ -143,18 +152,17 @@ const RegisterPage = () => {
     <div className="auth-page">
       <div className="auth-card">
         <h2>Create Wallet</h2>
-
         <ProgressBar step={step} />
 
-        {/* STEP 1 */}
+        {/* STEP 1: Welcome */}
         {step === 1 && (
           <div className="step-content">
-            <p>Fully non-custodial. You control everything.</p>
-            <button onClick={nextStep}>Continue</button>
+            <p>Your keys, your crypto. We never store your private key on our servers.</p>
+            <button onClick={nextStep}>Get Started</button>
           </div>
         )}
 
-        {/* STEP 2 */}
+        {/* STEP 2: Security Setup */}
         {step === 2 && (
           <div className="step-content">
             <input
@@ -169,19 +177,18 @@ const RegisterPage = () => {
             />
 
             {isBiometricAvailable() && (
-              <label>
+              <label className="checkbox-label">
                 <input
                   type="checkbox"
                   checked={enableBiometric}
                   onChange={(e) => setEnableBiometric(e.target.checked)}
                 />
-                Enable Biometrics
+                Enable FaceID / Fingerprint
               </label>
             )}
 
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={prevStep}>Back</button>
-
               <button
                 disabled={passcode.length < 6}
                 onClick={nextStep}
@@ -192,49 +199,40 @@ const RegisterPage = () => {
           </div>
         )}
 
-        {/* STEP 3 */}
+        {/* STEP 3: Seed Phrase */}
         {step === 3 && (
           <div className="step-content">
+            <p className="warning-text">Write these down. Never share them.</p>
             <SeedPhraseGrid phrase={seedPhrase} />
 
             <button onClick={() => copyToClipboard(seedPhrase.join(' '))}>
-              Copy
+              Copy to Clipboard
             </button>
 
-            <input
-              placeholder="Word #2"
-              onChange={(e) =>
-                setConfirm({
-                  ...confirm,
-                  w1: e.target.value.trim().toLowerCase()
-                })
-              }
-            />
+            <div className="confirm-seed">
+              <input
+                placeholder="Confirm Word #2"
+                onChange={(e) => setConfirm({ ...confirm, w1: e.target.value.trim() })}
+              />
+              <input
+                placeholder="Confirm Word #6"
+                onChange={(e) => setConfirm({ ...confirm, w2: e.target.value.trim() })}
+              />
+            </div>
 
-            <input
-              placeholder="Word #6"
-              onChange={(e) =>
-                setConfirm({
-                  ...confirm,
-                  w2: e.target.value.trim().toLowerCase()
-                })
-              }
-            />
-
-            <label>
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 checked={saved}
                 onChange={(e) => setSaved(e.target.checked)}
               />
-              I saved my seed
+              I have saved my seed phrase securely
             </label>
 
-            {error && <div>{error}</div>}
+            {error && <div className="error-message">{error}</div>}
 
             <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
               <button onClick={prevStep}>Back</button>
-
               <button
                 disabled={!saved || !verifySeed() || loading}
                 onClick={handleCreateAccount}
