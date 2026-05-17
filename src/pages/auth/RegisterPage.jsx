@@ -20,7 +20,7 @@ const API_BASE_URL =
 const STORAGE_KEY = 'wallet_encrypted';
 
 // ─────────────────────────────────────────────
-// Device-bound key (v2 vault foundation)
+// Device-bound key
 // ─────────────────────────────────────────────
 const getDeviceSalt = () => {
   let salt = localStorage.getItem('device_salt');
@@ -72,10 +72,11 @@ const RegisterPage = () => {
     seedPhrase[1] === confirm.w1 && seedPhrase[5] === confirm.w2;
 
   const nextStep = () => setStep((s) => Math.min(s + 1, 3));
+  const prevStep = () => setStep((s) => Math.max(s - 1, 1));
 
   const handleCreateAccount = async () => {
     if (!saved) return setError('Please confirm seed phrase saved.');
-    if (passcode.length < 6) return setError('Passcode too short.');
+    if (passcode.length < 6) return setError('Passcode must be at least 6 digits.');
     if (!verifySeed()) return setError('Seed verification failed.');
 
     setLoading(true);
@@ -84,29 +85,17 @@ const RegisterPage = () => {
     try {
       const phraseString = seedPhrase.join(' ');
 
-      // ─────────────────────────────────────
-      // 🔐 1. Derive secure encryption key
-      // ─────────────────────────────────────
       const deviceSalt = getDeviceSalt();
       const key = await deriveKeyFromPasscode(passcode + deviceSalt);
 
       const encrypted = await encryptData(phraseString, key);
 
-      // ─────────────────────────────────────
-      // 🧠 2. Optional biometric binding
-      // ─────────────────────────────────────
       if (enableBiometric && isBiometricAvailable()) {
-        await unlockLocalVault(); // triggers biometric prompt
+        await unlockLocalVault();
       }
 
-      // ─────────────────────────────────────
-      // 🔑 3. Wallet generation
-      // ─────────────────────────────────────
       const wallet = ethers.Wallet.fromPhrase(phraseString);
 
-      // ─────────────────────────────────────
-      // 🌐 4. Non-custodial auth (MetaMask style)
-      // ─────────────────────────────────────
       const nonceRes = await axios.post(`${API_BASE_URL}/auth/nonce`, {
         walletAddress: wallet.address
       });
@@ -121,9 +110,6 @@ const RegisterPage = () => {
         message: messageToSign
       });
 
-      // ─────────────────────────────────────
-      // 💾 5. Save vault locally (ONLY encrypted)
-      // ─────────────────────────────────────
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
@@ -135,15 +121,11 @@ const RegisterPage = () => {
         })
       );
 
-      // ─────────────────────────────────────
-      // ⚡ 6. Create session (MetaMask behavior)
-      // ─────────────────────────────────────
       setSessionWallet(wallet);
 
       localStorage.setItem('authToken', authRes.data.token);
       localStorage.setItem('walletAddress', wallet.address);
 
-      // wipe memory
       setSeedPhrase([]);
       setPasscode('');
 
@@ -164,20 +146,26 @@ const RegisterPage = () => {
 
         <ProgressBar step={step} />
 
+        {/* STEP 1 */}
         {step === 1 && (
           <div className="step-content">
             <p>Fully non-custodial. You control everything.</p>
-            <button onClick={nextStep}>Create Wallet</button>
+            <button onClick={nextStep}>Continue</button>
           </div>
         )}
 
+        {/* STEP 2 */}
         {step === 2 && (
           <div className="step-content">
             <input
               type="password"
+              inputMode="numeric"
+              maxLength={12}
               value={passcode}
-              onChange={(e) => setPasscode(e.target.value)}
-              placeholder="Create passcode"
+              onChange={(e) =>
+                setPasscode(e.target.value.replace(/\D/g, '').slice(0, 12))
+              }
+              placeholder="Create 6–12 digit passcode"
             />
 
             {isBiometricAvailable() && (
@@ -191,12 +179,20 @@ const RegisterPage = () => {
               </label>
             )}
 
-            <button disabled={passcode.length < 6} onClick={nextStep}>
-              Continue
-            </button>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={prevStep}>Back</button>
+
+              <button
+                disabled={passcode.length < 6}
+                onClick={nextStep}
+              >
+                Continue
+              </button>
+            </div>
           </div>
         )}
 
+        {/* STEP 3 */}
         {step === 3 && (
           <div className="step-content">
             <SeedPhraseGrid phrase={seedPhrase} />
@@ -208,14 +204,20 @@ const RegisterPage = () => {
             <input
               placeholder="Word #2"
               onChange={(e) =>
-                setConfirm({ ...confirm, w1: e.target.value })
+                setConfirm({
+                  ...confirm,
+                  w1: e.target.value.trim().toLowerCase()
+                })
               }
             />
 
             <input
               placeholder="Word #6"
               onChange={(e) =>
-                setConfirm({ ...confirm, w2: e.target.value })
+                setConfirm({
+                  ...confirm,
+                  w2: e.target.value.trim().toLowerCase()
+                })
               }
             />
 
@@ -230,9 +232,16 @@ const RegisterPage = () => {
 
             {error && <div>{error}</div>}
 
-            <button onClick={handleCreateAccount} disabled={loading}>
-              {loading ? 'Creating...' : 'Create Wallet'}
-            </button>
+            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+              <button onClick={prevStep}>Back</button>
+
+              <button
+                disabled={!saved || !verifySeed() || loading}
+                onClick={handleCreateAccount}
+              >
+                {loading ? 'Creating...' : 'Create Wallet'}
+              </button>
+            </div>
           </div>
         )}
       </div>
