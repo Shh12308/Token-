@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 import { faArrowLeft, faRepeat, faChevronDown, faInfoCircle, faExchangeAlt, faCheck, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import BottomNav from '../components/BottomNav';
-import { getSessionWallet } from '../../utils/session'; // Import session manager
+import { getSessionWallet } from '../utils/session'; // Import session manager
 
 const API_BASE = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
