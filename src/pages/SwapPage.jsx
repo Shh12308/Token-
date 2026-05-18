@@ -66,7 +66,7 @@ const SwapPage = () => {
     return () => clearTimeout(timer);
   }, [fromAmount, fromToken, toToken, chainId]);
 
-  const fetchQuote = async () => {
+    const fetchQuote = async () => {
     if (!fromToken.address || !toToken.address) return;
     
     setLoadingQuote(true);
@@ -84,10 +84,10 @@ const SwapPage = () => {
 
       setToAmount(ethers.formatUnits(res.data.toAmount, toToken.decimals || 18));
       setNeedsApproval(fromToken.address !== '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE');
-    }     } catch (e) {
+    } catch (e) {
       console.error('Quote Error:', e);
       // SHOW THE ACTUAL BACKEND ERROR MESSAGE
-      const msg = e.response?.data?.message || e.response?.data?.error || 'Could not fetch rate';
+      const msg = e.response?.data?.message || e.response?.data?.details || 'Could not fetch rate';
       setError(`Error: ${msg}`); 
       setToAmount('0.0');
     } finally {
