@@ -84,10 +84,11 @@ const SwapPage = () => {
 
       setToAmount(ethers.formatUnits(res.data.toAmount, toToken.decimals || 18));
       setNeedsApproval(fromToken.address !== '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE');
-    } catch (e) {
+    }     } catch (e) {
       console.error('Quote Error:', e);
-      const backendError = e.response?.data?.message || 'Could not fetch rate';
-      setError(backendError);
+      // SHOW THE ACTUAL BACKEND ERROR MESSAGE
+      const msg = e.response?.data?.message || e.response?.data?.error || 'Could not fetch rate';
+      setError(`Error: ${msg}`); 
       setToAmount('0.0');
     } finally {
       setLoadingQuote(false);
