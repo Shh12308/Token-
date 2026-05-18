@@ -49,6 +49,7 @@ const SwapPage = () => {
         
         setFromAmount('');
         setToAmount('0.0');
+        setError('');
       } catch (e) {
         console.error("Failed to fetch tokens", e);
       }
@@ -59,14 +60,15 @@ const SwapPage = () => {
   // ── Debounced Quote Fetcher ────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (fromAmount && parseFloat(fromAmount) > 0 && toToken.address) {
+      // Only fetch if we have valid addresses and amount
+      if (fromAmount && parseFloat(fromAmount) > 0 && fromToken.address && toToken.address) {
         fetchQuote();
       }
     }, 500);
     return () => clearTimeout(timer);
   }, [fromAmount, fromToken, toToken, chainId]);
 
-    const fetchQuote = async () => {
+  const fetchQuote = async () => {
     if (!fromToken.address || !toToken.address) return;
     
     setLoadingQuote(true);
@@ -86,9 +88,12 @@ const SwapPage = () => {
       setNeedsApproval(fromToken.address !== '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE');
     } catch (e) {
       console.error('Quote Error:', e);
-      // SHOW THE ACTUAL BACKEND ERROR MESSAGE
-      const msg = e.response?.data?.message || e.response?.data?.details || 'Could not fetch rate';
-      setError(`Error: ${msg}`); 
+      
+      // FIX: Show the actual error message from Backend/1inch
+      const errorData = e.response?.data;
+      const errorMsg = errorData?.error || errorData?.message || 'Could not fetch rate';
+      
+      setError(`Error: ${errorMsg}`);
       setToAmount('0.0');
     } finally {
       setLoadingQuote(false);
@@ -101,23 +106,19 @@ const SwapPage = () => {
     setError('');
     setLoadingTx(true);
     try {
-      // Safety check for wallet
       const wallet = getSessionWallet();
-      if (!wallet) {
-          setError('Wallet not connected. Please login again.');
-          setLoadingTx(false);
-          return navigate('/login');
-      }
+      if (!wallet) return navigate('/login');
 
-      // 1. Get Approval Data & Nonce/Gas Data (Parallel)
+      // 1. Fetch Approval Data & Nonce/Gas Data in parallel
       const [approveRes, prepRes] = await Promise.all([
           axios.get(`${API_BASE}/swap/approve`, {
             params: { chainId, tokenAddress: fromToken.address },
             headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
           }),
+          // Use a dummy call to get fresh nonce and gas prices
           axios.post(`${API_BASE}/tx/build`, {
             fromAddress: wallet.address,
-            toAddress: wallet.address, // Dummy call just for nonce/gas
+            toAddress: wallet.address, 
             amount: "0",
             chainId: chainId
           }, { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } })
@@ -131,12 +132,12 @@ const SwapPage = () => {
           data: approveRes.data.approveTransaction.data,
           value: approveRes.data.approveTransaction.value,
           from: wallet.address,
-          nonce: unsignedBase.nonce, // Use nonce from backend
+          nonce: unsignedBase.nonce, 
           chainId: chainId,
           type: 2,
           maxFeePerGas: unsignedBase.maxFeePerGas,
           maxPriorityFeePerGas: unsignedBase.maxPriorityFeePerGas,
-          gasLimit: 60000 // Standard approval gas
+          gasLimit: 60000 
       };
 
       // 3. Sign Locally
