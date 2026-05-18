@@ -1,15 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ethers } from 'ethers';
-import { faArrowLeft, faRepeat, faChevronDown, faInfoCircle, faExchangeAlt, faCheck, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faChevronDown, faInfoCircle, faExchangeAlt, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import BottomNav from '../components/BottomNav';
-import { getSessionWallet } from '../utils/session'; // Import session manager
+import { getSessionWallet } from '../utils/session'; 
 
 const API_BASE = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
-// Supported Chains for Swap
 const CHAINS = [
   { id: 1, name: 'Ethereum', symbol: 'ETH', color: '#627eea' },
   { id: 137, name: 'Polygon', symbol: 'MATIC', color: '#8247e5' },
@@ -20,32 +19,30 @@ const SwapPage = () => {
   const navigate = useNavigate();
   
   // ── State ───────────────────────────────────────────
-  const [chainId, setChainId] = useState(1); // Default Ethereum
-  const [fromToken, setFromToken] = useState({ symbol: 'ETH', address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE' });
-  const [toToken, setToToken] = useState({ symbol: 'USDC', address: '' }); // Address filled by backend
+  const [chainId, setChainId] = useState(1);
+  const [fromToken, setFromToken] = useState({ symbol: 'ETH', address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', decimals: 18 });
+  const [toToken, setToToken] = useState({ symbol: 'USDC', address: '', decimals: 6 });
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('0.0');
   const [tokenList, setTokenList] = useState([]);
 
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [loadingTx, setLoadingTx] = useState(false);
-  const [needsApproval, setNeedsApproval] = useState(false); // ERC20 Approval State
+  const [needsApproval, setNeedsApproval] = useState(false);
   const [error, setError] = useState('');
 
-  // ── Fetch Token List on Chain Change ───────────────────
+  // ── Fetch Token List ───────────────────────────────────
   useEffect(() => {
     const fetchTokens = async () => {
       try {
         const res = await axios.get(`${API_BASE}/tokens/list`, { params: { chainId } });
         const tokens = res.data.tokens || [];
         
-        // Add Native Token to the list manually
         const chainInfo = CHAINS.find(c => c.id === chainId);
         const nativeToken = { symbol: chainInfo?.symbol || 'ETH', address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', decimals: 18 };
         
         setTokenList([nativeToken, ...tokens]);
         
-        // Set Defaults
         setFromToken(nativeToken);
         if (tokens.length > 0) setToToken(tokens[0]);
         else setToToken(nativeToken); 
@@ -62,11 +59,10 @@ const SwapPage = () => {
   // ── Debounced Quote Fetcher ────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (fromAmount && parseFloat(fromAmount) > 0) {
+      if (fromAmount && parseFloat(fromAmount) > 0 && toToken.address) {
         fetchQuote();
       }
-    }, 500); // Wait 500ms after user stops typing
-
+    }, 500);
     return () => clearTimeout(timer);
   }, [fromAmount, fromToken, toToken, chainId]);
 
@@ -87,11 +83,11 @@ const SwapPage = () => {
       });
 
       setToAmount(ethers.formatUnits(res.data.toAmount, toToken.decimals || 18));
-      // Simple check: If selling token is not Native, we probably need approval
       setNeedsApproval(fromToken.address !== '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE');
     } catch (e) {
       console.error('Quote Error:', e);
-      setError('Could not fetch rate');
+      const backendError = e.response?.data?.message || 'Could not fetch rate';
+      setError(backendError);
       setToAmount('0.0');
     } finally {
       setLoadingQuote(false);
@@ -104,19 +100,48 @@ const SwapPage = () => {
     setError('');
     setLoadingTx(true);
     try {
+      // Safety check for wallet
       const wallet = getSessionWallet();
-      if (!wallet) return navigate('/login');
+      if (!wallet) {
+          setError('Wallet not connected. Please login again.');
+          setLoadingTx(false);
+          return navigate('/login');
+      }
 
-      // 1. Get Approval TX from Backend
-      const { data } = await axios.get(`${API_BASE}/swap/approve`, {
-        params: { chainId, tokenAddress: fromToken.address },
-        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
-      });
+      // 1. Get Approval Data & Nonce/Gas Data (Parallel)
+      const [approveRes, prepRes] = await Promise.all([
+          axios.get(`${API_BASE}/swap/approve`, {
+            params: { chainId, tokenAddress: fromToken.address },
+            headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+          }),
+          axios.post(`${API_BASE}/tx/build`, {
+            fromAddress: wallet.address,
+            toAddress: wallet.address, // Dummy call just for nonce/gas
+            amount: "0",
+            chainId: chainId
+          }, { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } })
+      ]);
 
-      // 2. Sign Locally
-      const signedTx = await wallet.signTransaction(data.approveTransaction);
+      const unsignedBase = prepRes.data.unsignedTransaction;
+
+      // 2. Construct Full Transaction
+      const approvalTx = {
+          to: approveRes.data.approveTransaction.to,
+          data: approveRes.data.approveTransaction.data,
+          value: approveRes.data.approveTransaction.value,
+          from: wallet.address,
+          nonce: unsignedBase.nonce, // Use nonce from backend
+          chainId: chainId,
+          type: 2,
+          maxFeePerGas: unsignedBase.maxFeePerGas,
+          maxPriorityFeePerGas: unsignedBase.maxPriorityFeePerGas,
+          gasLimit: 60000 // Standard approval gas
+      };
+
+      // 3. Sign Locally
+      const signedTx = await wallet.signTransaction(approvalTx);
       
-      // 3. Broadcast
+      // 4. Broadcast
       await axios.post(`${API_BASE}/tx/broadcast`, {
         signedTransaction: signedTx,
         chainId
@@ -125,11 +150,11 @@ const SwapPage = () => {
       });
 
       alert('Approval sent! Please wait a moment before swapping.');
-      setNeedsApproval(false); // Optimistic update
+      setNeedsApproval(false);
       
     } catch (e) {
       console.error(e);
-      setError('Approval failed.');
+      setError('Approval failed: ' + (e.response?.data?.message || e.message));
     } finally {
       setLoadingTx(false);
     }
@@ -154,19 +179,30 @@ const SwapPage = () => {
         headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
       });
 
-      // 2. Sign Locally
-      // Note: 1inch returns a partially filled TX object
+      // 2. Get fresh nonce/gas from backend helper
+      const prepRes = await axios.post(`${API_BASE}/tx/build`, {
+          fromAddress: wallet.address,
+          toAddress: data.tx.to, 
+          amount: "0", 
+          chainId: chainId
+      }, { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } });
+
+      // 3. Construct Full Transaction
       const txRequest = {
           to: data.tx.to,
           data: data.tx.data,
           value: data.tx.value,
-          gasLimit: data.tx.gas,
-          // Ethers v6 needs some gasPrice data usually, simplified here
+          from: wallet.address,
+          nonce: prepRes.data.unsignedTransaction.nonce,
+          chainId: chainId,
+          type: 2,
+          maxFeePerGas: prepRes.data.unsignedTransaction.maxFeePerGas,
+          maxPriorityFeePerGas: prepRes.data.unsignedTransaction.maxPriorityFeePerGas,
+          gasLimit: data.tx.gas || 150000
       };
       
+      // 4. Sign & Broadcast
       const signedTx = await wallet.signTransaction(txRequest);
-
-      // 3. Broadcast
       const broadcastRes = await axios.post(`${API_BASE}/tx/broadcast`, {
         signedTransaction: signedTx,
         chainId
@@ -179,7 +215,7 @@ const SwapPage = () => {
 
     } catch (e) {
       console.error(e);
-      setError(e.response?.data?.message || 'Swap failed.');
+      setError(e.response?.data?.message || e.message || 'Swap failed.');
     } finally {
       setLoadingTx(false);
     }
@@ -190,19 +226,15 @@ const SwapPage = () => {
     setFromToken(toToken);
     setToToken(temp);
     setFromAmount(toAmount);
-    // Recalculate quote? useEffect handles it via fromAmount change
   };
 
   const selectChain = (id) => {
     setChainId(id);
     const chain = CHAINS.find(c => c.id === id);
-    // Reset token selection when chain changes
     setFromToken({ symbol: chain.symbol, address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE' });
     setToToken({ symbol: '...', address: '' });
+    setNeedsApproval(false);
   };
-
-  // ── UI ────────────────────────────────────────────────
-  const activeChain = CHAINS.find(c => c.id === chainId);
 
   return (
     <div className="dashboard-container-gold">
@@ -223,7 +255,8 @@ const SwapPage = () => {
                   border: chainId === c.id ? `1px solid ${c.color}` : '1px solid #444',
                   background: chainId === c.id ? `${c.color}22` : 'transparent',
                   color: chainId === c.id ? c.color : '#888',
-                  fontSize: '12px'
+                  fontSize: '12px',
+                  cursor: 'pointer'
                 }}
               >
                 {c.name}
@@ -240,13 +273,13 @@ const SwapPage = () => {
             <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
           </div>
 
-          {error && <div className="error-msg" style={{ marginBottom: 12 }}>{error}</div>}
+          {error && <div className="error-msg" style={{ marginBottom: 12, color: 'red', fontSize: 14 }}>{error}</div>}
 
           {/* From Input */}
           <div className="swap-input-group-gold">
             <div className="input-label-gold">
               <span>You Pay</span>
-              <div className="select-badge-gold" onClick={() => alert('Open Token Modal')}>
+              <div className="select-badge-gold" style={{ cursor: 'pointer' }}>
                 {fromToken.symbol} <FontAwesomeIcon icon={faChevronDown} style={{fontSize: '10px', marginLeft:'5px'}}/>
               </div>
             </div>
@@ -268,7 +301,7 @@ const SwapPage = () => {
           <div className="swap-input-group-gold">
             <div className="input-label-gold">
               <span>You Receive</span>
-              <div className="select-badge-gold" onClick={() => alert('Open Token Modal')}>
+              <div className="select-badge-gold" style={{ cursor: 'pointer' }}>
                 {toToken.symbol} <FontAwesomeIcon icon={faChevronDown} style={{fontSize: '10px', marginLeft:'5px'}}/>
               </div>
             </div>
@@ -284,7 +317,6 @@ const SwapPage = () => {
 
           {/* Actions */}
           <div style={{ marginTop: 24 }}>
-            {/* Conditional Button Logic */}
             {needsApproval ? (
               <button 
                 className="btn-primary" 
