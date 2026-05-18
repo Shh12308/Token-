@@ -9,7 +9,7 @@ const API_BASE =
   process.env.REACT_APP_API_URL ||
   'https://blockvault-backend-production.up.railway.app/api';
 
-// Mapping Chain IDs (returned by backend) to Display Info
+// Chain mapping (backend currently supports only Ethereum in /wallet/balance)
 const CHAIN_INFO = {
   1: { name: 'Ethereum', symbol: 'ETH', color: '#627eea', icon: '⟠' },
   137: { name: 'Polygon', symbol: 'MATIC', color: '#8247e5', icon: '⬡' },
@@ -28,7 +28,7 @@ const Home = () => {
   const [error, setError] = useState('');
   const [walletAddress, setWalletAddress] = useState('');
 
-  // ── Auth & Data Fetch ─────────────────────────────────────
+  // ── AUTH + INITIAL LOAD ───────────────────────────────
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     const storedAddress = localStorage.getItem('walletAddress');
@@ -39,50 +39,52 @@ const Home = () => {
     }
 
     if (storedAddress) setWalletAddress(storedAddress);
-    
-    fetchPortfolio(token);
+
+    fetchBalance(token);
   }, [navigate]);
 
-  const fetchPortfolio = async (token) => {
+  // ── FETCH BALANCE (FIXED TO MATCH BACKEND) ─────────────
+  const fetchBalance = async (token) => {
     try {
-      setError('');
       setLoading(true);
+      setError('');
 
-      // 1. Call Stateless Multi-Chain Endpoint
-      // Backend reads wallet address from JWT, so no params needed
-      const res = await axios.get(`${API_BASE}/wallet/portfolio`, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 15000, 
+      const address = localStorage.getItem('walletAddress');
+
+      const res = await axios.get(`${API_BASE}/wallet/balance`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          address,
+        },
+        timeout: 15000,
       });
 
       if (res.data) {
-        // 2. Aggregate assets from all chains into one flat list (MetaMask Style)
-        const allAssets = [];
-        const portfolio = res.data.portfolio || {};
+        const data = res.data;
 
-        // Iterate over chains in portfolio (ethereum, polygon, etc.)
-        Object.keys(portfolio).forEach(chainKey => {
-          const chainData = portfolio[chainKey];
-          if (chainData.assets && chainData.assets.length > 0) {
-            chainData.assets.forEach(asset => {
-              allAssets.push({
-                ...asset,
-                chainKey: chainKey, // e.g., 'ethereum'
-                chainName: chainData.name
-              });
+        const allAssets = [];
+
+        if (Array.isArray(data.assets)) {
+          data.assets.forEach((asset) => {
+            allAssets.push({
+              ...asset,
+              chainId: asset.chainId || 1,
+              chainKey: 'ethereum',
+              chainName: 'Ethereum',
             });
-          }
-        });
+          });
+        }
 
         setAssets(allAssets);
-        setTotalBalance(Number(res.data.totalBalance) || 0);
-        
-        // Update local address if backend returned it (trust backend)
-        if(res.data.address) setWalletAddress(res.data.address);
-      }
+        setTotalBalance(Number(data.totalBalance) || 0);
 
+        if (data.address) setWalletAddress(data.address);
+      }
     } catch (err) {
       console.error('Dashboard Error:', err);
+
       if (err.code === 'ERR_NETWORK') {
         setError('Network error. Check connection.');
       } else if (err.response?.status === 401) {
@@ -96,14 +98,13 @@ const Home = () => {
     }
   };
 
-  // ── Memoized Calculations ─────────────────────────────────
+  // ── MEMO (placeholder growth %) ────────────────────────
   const weightedChange = useMemo(() => {
-    // Simplified calculation as we may not have change % for all tokens
     if (assets.length === 0) return 0;
-    return 2.4; // Placeholder positive change
+    return 2.4;
   }, [assets]);
 
-  // ── Helpers ────────────────────────────────────────────
+  // ── HELPERS ────────────────────────────────────────────
   const formatCurrency = (value) =>
     Number(value || 0).toLocaleString(undefined, {
       minimumFractionDigits: 2,
@@ -118,15 +119,17 @@ const Home = () => {
     return num.toLocaleString(undefined, { maximumFractionDigits: 4 });
   };
 
-  const truncateAddress = (addr) => 
+  const truncateAddress = (addr) =>
     addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '';
 
-  if (loading)
+  // ── LOADING STATE ──────────────────────────────────────
+  if (loading) {
     return (
       <div className="dashboard-loading-gold">
         <div className="loader-gold"></div>
       </div>
     );
+  }
 
   return (
     <div className="dashboard-container-gold">
@@ -145,10 +148,7 @@ const Home = () => {
         </div>
 
         <div className="header-right">
-          <div
-            className="header-icon"
-            onClick={() => navigate('/app/notifications')}
-          >
+          <div className="header-icon" onClick={() => navigate('/app/notifications')}>
             <FontAwesomeIcon icon={faBell} />
           </div>
         </div>
@@ -185,20 +185,21 @@ const Home = () => {
           </div>
 
           <div className="balance-actions-gold">
-            <span className="tag-gold">Multi-Chain</span>
+            <span className="tag-gold">Single Chain (ETH)</span>
             <span style={{ color: weightedChange >= 0 ? '#4ade80' : '#f87171' }}>
-              {weightedChange >= 0 ? '+' : ''}{weightedChange.toFixed(2)}%
+              {weightedChange >= 0 ? '+' : ''}
+              {weightedChange.toFixed(2)}%
             </span>
           </div>
         </div>
 
-        {/* ACTION BUTTONS */}
+        {/* ACTIONS */}
         <div className="quick-actions-gold">
           <button className="action-btn" onClick={() => navigate('/app/send')}>
             <FontAwesomeIcon icon={faPaperPlane} />
             <span>Send</span>
           </button>
-          
+
           <button className="action-btn" onClick={() => navigate('/app/receive')}>
             <FontAwesomeIcon icon={faQrcode} />
             <span>Receive</span>
@@ -210,44 +211,37 @@ const Home = () => {
           </button>
         </div>
 
-        {/* ASSETS LIST */}
+        {/* ASSETS */}
         <div className="assets-section-gold">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3>Assets</h3>
-            <span 
-              style={{ fontSize: '12px', color: '#c9a84c', cursor: 'pointer' }} 
-              onClick={() => fetchPortfolio(localStorage.getItem('authToken'))}
-            >
-              Refresh
-            </span>
-          </div>
+          <h3>Assets</h3>
 
           {assets.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>
-              No assets found on any network.
+              No assets found.
             </div>
           ) : (
             assets.map((asset, i) => {
-              // Resolve Chain Info for Badge
-              const chainId = asset.chainId;
-              const chainDisplay = CHAIN_INFO[chainId] || { name: asset.chainName, color: '#888' };
+              const chainId = asset.chainId || 1;
+              const chainDisplay = CHAIN_INFO[chainId] || {
+                name: 'Ethereum',
+                color: '#888',
+              };
 
               return (
                 <div
-                  key={`${asset.symbol}-${asset.address || 'native'}-${chainId}-${i}`}
+                  key={`${asset.symbol}-${i}`}
                   className="asset-item-gold"
-                  onClick={() =>
-                    navigate('/app/asset/' + asset.symbol?.toLowerCase(), { state: { asset } })
-                  }
                 >
                   <div className="asset-left">
                     <div className="asset-icon">
-                      {/* Token Initial */}
-                      <span style={{ fontSize: 20 }}>{asset.symbol?.charAt(0)}</span>
+                      <span style={{ fontSize: 20 }}>
+                        {asset.symbol?.charAt(0)}
+                      </span>
                     </div>
+
                     <div>
                       <div className="asset-name">{asset.name}</div>
-                      <div className="asset-balance" style={{ display: 'flex', gap: '6px' }}>
+                      <div className="asset-balance">
                         {isBalanceHidden
                           ? '••••'
                           : `${formatBalance(asset.balance)} ${asset.symbol}`}
@@ -257,19 +251,20 @@ const Home = () => {
 
                   <div className="asset-right">
                     <div className="asset-value">
-                      {isBalanceHidden ? '••••' : `$${formatCurrency(asset.value)}`}
+                      {isBalanceHidden
+                        ? '••••'
+                        : `$${formatCurrency(asset.value)}`}
                     </div>
-                    {/* Chain Badge */}
-                    <div 
-                      style={{ 
-                        fontSize: 10, 
-                        color: chainDisplay.color, 
+
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: chainDisplay.color,
                         border: `1px solid ${chainDisplay.color}33`,
                         background: `${chainDisplay.color}15`,
-                        padding: '2px 6px', 
-                        borderRadius: 4, 
+                        padding: '2px 6px',
+                        borderRadius: 4,
                         marginTop: 4,
-                        display: 'inline-block'
                       }}
                     >
                       {chainDisplay.name}
