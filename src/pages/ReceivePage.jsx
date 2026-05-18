@@ -4,7 +4,7 @@ import { faArrowLeft, faCopy, faCheck, faUpRightFromSquare } from '@fortawesome/
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { QRCodeSVG } from 'qrcode.react'; // Ensure you run: npm install qrcode.react
 import BottomNav from '../components/BottomNav';
-import { getSessionWallet } from '../../utils/session'; // Import session manager
+import { getSessionWallet } from '../utils/session'; // Import session manager
 
 const CHAINS = {
   ethereum: { name: 'Ethereum', explorer: 'https://etherscan.io' },
