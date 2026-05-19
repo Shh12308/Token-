@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { ethers } from 'ethers'; // ADDED MISSING IMPORT
 import {
   FiTrendingUp, FiZap, FiLock, FiUnlock, FiDollarSign, FiClock,
   FiChevronDown, FiInfo, FiExternalLink, FiRefreshCw,
