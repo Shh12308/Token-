@@ -51,7 +51,7 @@ const Home = () => {
 
       const address = localStorage.getItem('walletAddress');
 
-      const res = await axios.get(`${API_BASE}/wallet/balance`, {
+      const res = await axios.get(`${API_BASE}/wallet/portfolio`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
