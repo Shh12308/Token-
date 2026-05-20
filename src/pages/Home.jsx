@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { faEyeSlash, faEye, faBell, faPaperPlane, faQrcode, faRightLeft } from '@fortawesome/free-solid-svg-icons';
+import {
+  faEyeSlash,
+  faEye,
+  faBell,
+  faPaperPlane,
+  faQrcode,
+  faRightLeft
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import BottomNav from '../components/BottomNav';
 
@@ -9,7 +16,7 @@ const API_BASE =
   process.env.REACT_APP_API_URL ||
   'https://blockvault-backend-production.up.railway.app/api';
 
-// Chain mapping (backend currently supports only Ethereum in /wallet/balance)
+// Chain mapping (frontend UI only)
 const CHAIN_INFO = {
   1: { name: 'Ethereum', symbol: 'ETH', color: '#627eea', icon: '⟠' },
   137: { name: 'Polygon', symbol: 'MATIC', color: '#8247e5', icon: '⬡' },
@@ -43,45 +50,41 @@ const Home = () => {
     fetchBalance(token);
   }, [navigate]);
 
-  // ── FETCH BALANCE (FIXED TO MATCH BACKEND) ─────────────
+  // ── FETCH BALANCE (MATCHES NEW BACKEND) ───────────────
   const fetchBalance = async (token) => {
     try {
       setLoading(true);
       setError('');
 
-      const address = localStorage.getItem('walletAddress');
-
       const res = await axios.get(`${API_BASE}/wallet/portfolio`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        params: {
-          address,
-        },
         timeout: 15000,
       });
 
-      if (res.data) {
-        const data = res.data;
+      const data = res.data;
 
-        const allAssets = [];
+      const allAssets = [];
 
-        if (Array.isArray(data.assets)) {
-          data.assets.forEach((asset) => {
+      // ✅ FIXED: backend structure = portfolio → chains → assets
+      if (data?.portfolio) {
+        Object.entries(data.portfolio).forEach(([chainKey, chain]) => {
+          (chain.assets || []).forEach((asset) => {
             allAssets.push({
               ...asset,
-              chainId: asset.chainId || 1,
-              chainKey: 'ethereum',
-              chainName: 'Ethereum',
+              chainId: 1, // backend currently ETH-only optimized
+              chainKey,
+              chainName: chain.name,
             });
           });
-        }
-
-        setAssets(allAssets);
-        setTotalBalance(Number(data.totalBalance) || 0);
-
-        if (data.address) setWalletAddress(data.address);
+        });
       }
+
+      setAssets(allAssets);
+      setTotalBalance(Number(data.totalBalance) || 0);
+
+      if (data.address) setWalletAddress(data.address);
     } catch (err) {
       console.error('Dashboard Error:', err);
 
@@ -148,7 +151,10 @@ const Home = () => {
         </div>
 
         <div className="header-right">
-          <div className="header-icon" onClick={() => navigate('/app/notifications')}>
+          <div
+            className="header-icon"
+            onClick={() => navigate('/app/notifications')}
+          >
             <FontAwesomeIcon icon={faBell} />
           </div>
         </div>
@@ -185,7 +191,7 @@ const Home = () => {
           </div>
 
           <div className="balance-actions-gold">
-            <span className="tag-gold">Single Chain (ETH)</span>
+            <span className="tag-gold">Single Chain (ETH Optimized)</span>
             <span style={{ color: weightedChange >= 0 ? '#4ade80' : '#f87171' }}>
               {weightedChange >= 0 ? '+' : ''}
               {weightedChange.toFixed(2)}%
@@ -223,15 +229,12 @@ const Home = () => {
             assets.map((asset, i) => {
               const chainId = asset.chainId || 1;
               const chainDisplay = CHAIN_INFO[chainId] || {
-                name: 'Ethereum',
+                name: asset.chainName || 'Ethereum',
                 color: '#888',
               };
 
               return (
-                <div
-                  key={`${asset.symbol}-${i}`}
-                  className="asset-item-gold"
-                >
+                <div key={`${asset.symbol}-${i}`} className="asset-item-gold">
                   <div className="asset-left">
                     <div className="asset-icon">
                       <span style={{ fontSize: 20 }}>
