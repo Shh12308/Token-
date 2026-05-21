@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 
 // --- PAGES ---
 import Home from '../pages/Home';
+import AdminDashboard from '../components/AdminDashboard';
 import AssetPage from '../pages/AssetPage';
 import ImportWalletPage from '../pages/Importwallet';
 import CreateWalletPage from '../pages/Createwalletpage';
@@ -46,6 +47,7 @@ const AppRoutes = () => {
         <Route path="/swap" element={<SwapPage />} />
         <Route path="/security" element={<Security />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/admin" element={<AdminDashboard />} />
         
         <Route path="/profile" element={<Profile />} />
         
