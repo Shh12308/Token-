@@ -11,10 +11,26 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import BottomNav from '../components/BottomNav';
+import { getSessionWallet } from '../utils/session';
 
-// Chain UI mapping
+// ─────────────────────────────────────────────
+// RPC CONFIG (expand later for multi-chain)
+// ─────────────────────────────────────────────
+const RPCS = {
+  ethereum: "https://eth.llamarpc.com",
+};
+
+// ─────────────────────────────────────────────
+// CHAIN UI CONFIG
+// ─────────────────────────────────────────────
 const CHAIN_INFO = {
-  1: { name: 'Ethereum', symbol: 'ETH', color: '#627eea', icon: '⟠' },
+  ethereum: {
+    name: 'Ethereum',
+    symbol: 'ETH',
+    color: '#627eea',
+    icon: '⟠',
+    chainId: 1
+  }
 };
 
 const Home = () => {
@@ -26,58 +42,66 @@ const Home = () => {
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
   const [error, setError] = useState('');
   const [walletAddress, setWalletAddress] = useState('');
+  const [wallet, setWallet] = useState(null);
 
-  // ── CONNECT + LOAD ───────────────────────────────
+  // ─────────────────────────────────────────────
+  // INIT WALLET + LOAD DATA
+  // ─────────────────────────────────────────────
   useEffect(() => {
-    connectAndLoad();
+    initWallet();
   }, []);
 
-  const connectAndLoad = async () => {
+  const initWallet = async () => {
     try {
-      if (!window.ethereum) {
-        setError("Please install MetaMask");
+      const activeWallet = getSessionWallet();
+
+      if (!activeWallet) {
+        setError("Wallet locked. Please login again.");
         setLoading(false);
         return;
       }
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const accounts = await provider.send("eth_requestAccounts", []);
-      const address = accounts[0];
+      setWallet(activeWallet);
+      setWalletAddress(activeWallet.address);
 
-      setWalletAddress(address);
-
-      await fetchBalance(provider, address);
+      await loadPortfolio(activeWallet);
 
     } catch (err) {
       console.error(err);
-      setError("Wallet connection failed");
+      setError("Failed to initialize wallet.");
+    } finally {
       setLoading(false);
     }
   };
 
-  // ── FETCH ON-CHAIN DATA ───────────────────────────
-  const fetchBalance = async (provider, address) => {
+  // ─────────────────────────────────────────────
+  // LOAD PORTFOLIO
+  // ─────────────────────────────────────────────
+  const loadPortfolio = async (wallet) => {
     try {
       setLoading(true);
       setError('');
 
-      const allAssets = [];
+      const provider = new ethers.JsonRpcProvider(RPCS.ethereum);
+      const address = wallet.address;
 
-      // ✅ ETH balance
-      const ethBalanceRaw = await provider.getBalance(address);
-      const ethBalance = parseFloat(ethers.formatEther(ethBalanceRaw));
+      const assetsList = [];
 
-      if (ethBalance > 0.0001) {
-        allAssets.push({
+      // ── ETH BALANCE ───────────────────────────
+      const ethRaw = await provider.getBalance(address);
+      const ethBalance = parseFloat(ethers.formatEther(ethRaw));
+
+      if (ethBalance > 0.00001) {
+        assetsList.push({
           name: 'Ethereum',
           symbol: 'ETH',
           balance: ethBalance,
-          value: ethBalance * 3000, // TODO: replace with real price API
-          chainId: 1
+          value: ethBalance * 3000, // TODO: replace with real API
+          chain: 'ethereum'
         });
       }
 
-      // ✅ stETH (Lido)
+      // ── STETH (Lido) ──────────────────────────
       try {
         const stethContract = new ethers.Contract(
           "0xae7ab96520de3a18e5e111bbeafaba64847cfb4f",
@@ -88,39 +112,44 @@ const Home = () => {
         const stethRaw = await stethContract.balanceOf(address);
         const stethBalance = parseFloat(ethers.formatEther(stethRaw));
 
-        if (stethBalance > 0.0001) {
-          allAssets.push({
+        if (stethBalance > 0.00001) {
+          assetsList.push({
             name: 'Lido Staked Ether',
             symbol: 'stETH',
             balance: stethBalance,
             value: stethBalance * 3000,
-            chainId: 1
+            chain: 'ethereum'
           });
         }
       } catch (err) {
-        console.warn("stETH fetch failed");
+        console.warn("stETH fetch failed:", err.message);
       }
 
-      setAssets(allAssets);
+      // ── SET STATE ─────────────────────────────
+      setAssets(assetsList);
 
-      const total = allAssets.reduce((sum, a) => sum + a.value, 0);
+      const total = assetsList.reduce((sum, a) => sum + a.value, 0);
       setTotalBalance(total);
 
     } catch (err) {
       console.error(err);
-      setError("Failed to fetch wallet data");
+      setError("Failed to load portfolio.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ── MEMO ──────────────────────────────────────────
+  // ─────────────────────────────────────────────
+  // MEMOIZED CHANGE (placeholder)
+  // ─────────────────────────────────────────────
   const weightedChange = useMemo(() => {
     if (assets.length === 0) return 0;
     return 2.4;
   }, [assets]);
 
-  // ── HELPERS ───────────────────────────────────────
+  // ─────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────
   const formatCurrency = (value) =>
     Number(value || 0).toLocaleString(undefined, {
       minimumFractionDigits: 2,
@@ -138,7 +167,9 @@ const Home = () => {
   const truncateAddress = (addr) =>
     addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '';
 
-  // ── LOADING ───────────────────────────────────────
+  // ─────────────────────────────────────────────
+  // LOADING STATE
+  // ─────────────────────────────────────────────
   if (loading) {
     return (
       <div className="dashboard-loading-gold">
@@ -147,6 +178,9 @@ const Home = () => {
     );
   }
 
+  // ─────────────────────────────────────────────
+  // UI
+  // ─────────────────────────────────────────────
   return (
     <div className="dashboard-container-gold">
 
@@ -177,15 +211,7 @@ const Home = () => {
       <main className="main-scroll-area-gold">
 
         {error && (
-          <div style={{
-            background: 'rgba(220,38,38,0.15)',
-            border: '1px solid rgba(220,38,38,0.4)',
-            color: '#fca5a5',
-            padding: '12px',
-            borderRadius: '8px',
-            marginBottom: '16px',
-            fontSize: '14px'
-          }}>
+          <div className="error-box">
             {error}
           </div>
         )}
@@ -204,7 +230,7 @@ const Home = () => {
           </div>
 
           <div className="balance-actions-gold">
-            <span className="tag-gold">On-chain Wallet</span>
+            <span className="tag-gold">Self-Custody Wallet</span>
             <span style={{ color: '#4ade80' }}>
               +{weightedChange.toFixed(2)}%
             </span>
@@ -213,17 +239,17 @@ const Home = () => {
 
         {/* ACTIONS */}
         <div className="quick-actions-gold">
-          <button className="action-btn" onClick={() => navigate('/app/send')}>
+          <button onClick={() => navigate('/app/send')}>
             <FontAwesomeIcon icon={faPaperPlane} />
             <span>Send</span>
           </button>
 
-          <button className="action-btn" onClick={() => navigate('/app/receive')}>
+          <button onClick={() => navigate('/app/receive')}>
             <FontAwesomeIcon icon={faQrcode} />
             <span>Receive</span>
           </button>
 
-          <button className="action-btn" onClick={() => navigate('/app/swap')}>
+          <button onClick={() => navigate('/app/swap')}>
             <FontAwesomeIcon icon={faRightLeft} />
             <span>Swap</span>
           </button>
@@ -234,18 +260,18 @@ const Home = () => {
           <h3>Assets</h3>
 
           {assets.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>
+            <div className="empty-state">
               No assets found.
             </div>
           ) : (
             assets.map((asset, i) => {
-              const chain = CHAIN_INFO[asset.chainId];
+              const chain = CHAIN_INFO[asset.chain];
 
               return (
                 <div key={`${asset.symbol}-${i}`} className="asset-item-gold">
                   <div className="asset-left">
                     <div className="asset-icon">
-                      {asset.symbol?.charAt(0)}
+                      {asset.symbol.charAt(0)}
                     </div>
 
                     <div>
@@ -265,16 +291,8 @@ const Home = () => {
                         : `$${formatCurrency(asset.value)}`}
                     </div>
 
-                    <div style={{
-                      fontSize: 10,
-                      color: chain.color,
-                      border: `1px solid ${chain.color}33`,
-                      background: `${chain.color}15`,
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      marginTop: 4,
-                    }}>
-                      {chain.name}
+                    <div className="chain-badge">
+                      {chain?.name}
                     </div>
                   </div>
                 </div>
@@ -282,6 +300,7 @@ const Home = () => {
             })
           )}
         </div>
+
       </main>
 
       <BottomNav />
