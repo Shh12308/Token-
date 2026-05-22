@@ -8,7 +8,7 @@ import {
   deriveKeyFromPasscode,
   isBiometricAvailable,
   unlockLocalVault
-} from '../utils/wallet';
+} from '../../utils/wallet';
 
 import {
   faKey,
