@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { ethers } from 'ethers';
-import api from '../../utils/api';
 
 import {
   decryptData,
@@ -11,37 +11,31 @@ import {
 } from '../../utils/wallet';
 
 import {
-  faKey,
-  faShieldHalved,
-  faFingerprint
-} from '@fortawesome/free-solid-svg-icons';
+  setSessionWallet,
+  getSessionWallet
+} from '../../utils/session';
 
+import { faKey, faShieldHalved, faFingerprint } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL ||
+  'https://blockvault-backend-production.up.railway.app/api';
 
 const STORAGE_KEY = 'wallet_encrypted';
 
 // ─────────────────────────────────────────────
-// NON-CUSTODIAL MEMORY WALLET (CRITICAL FIX)
+// Device Salt
 // ─────────────────────────────────────────────
-const setRuntimeWallet = (wallet) => {
-  window.__WALLET__ = wallet;
+const getDeviceSalt = () => {
+  return localStorage.getItem('device_salt');
 };
-
-const getRuntimeWallet = () => window.__WALLET__;
-
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
-const getDeviceSalt = () => localStorage.getItem('device_salt');
 
 const getStoredWallet = () => {
   const data = localStorage.getItem(STORAGE_KEY);
   return data ? JSON.parse(data) : null;
 };
 
-// ─────────────────────────────────────────────
-// LOGIN COMPONENT
-// ─────────────────────────────────────────────
 const LoginPage = () => {
   const navigate = useNavigate();
 
@@ -53,63 +47,69 @@ const LoginPage = () => {
   const [phrase, setPhrase] = useState('');
 
   const storedWallet = getStoredWallet();
+  const hasWallet = !!storedWallet;
 
+  // ─────────────────────────────────────────────
+  // Auto-login
+  // ─────────────────────────────────────────────
   useEffect(() => {
-    if (getRuntimeWallet()) {
+    const session = getSessionWallet();
+    if (session) {
       navigate('/app/dashboard');
     }
   }, [navigate]);
 
-  // ─────────────────────────────
-  // AUTH (backend verification only)
-  // ─────────────────────────────
+  // ─────────────────────────────────────────────
+  // Auth (stateless)
+  // ─────────────────────────────────────────────
   const authenticate = async (address, signer) => {
     setLoading(true);
     setError('');
 
     try {
-      const nonceRes = await api.post('/auth/nonce', {
+      const nonceRes = await axios.post(`${API_BASE_URL}/auth/nonce`, {
         walletAddress: address
       });
 
-      const message = nonceRes.data.messageToSign;
+      const messageToSign =
+        nonceRes.data.messageToSign || nonceRes.data.message;
 
-      const signature = await signer.signMessage(message);
+      if (!messageToSign) throw new Error('Auth failed');
 
-      const verifyRes = await api.post('/auth/verify', {
+      const signature = await signer.signMessage(messageToSign);
+
+      const verifyRes = await axios.post(`${API_BASE_URL}/auth/verify`, {
         walletAddress: address,
         signature,
-        message
+        message: messageToSign
       });
 
-      const token = verifyRes.data.token;
-
-      if (!token) throw new Error('Auth failed');
-
-      localStorage.setItem('authToken', token);
-
-      navigate('/app/dashboard');
+      if (verifyRes.data.token) {
+        localStorage.setItem('authToken', verifyRes.data.token);
+        localStorage.setItem('walletAddress', address);
+        navigate('/app/dashboard');
+      }
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Auth failed');
+      setError(err.response?.data?.message || 'Authentication failed.');
     } finally {
       setLoading(false);
     }
   };
 
-  // ─────────────────────────────
-  // PASSCODE LOGIN (local decrypt only)
-  // ─────────────────────────────
+  // ─────────────────────────────────────────────
+  // PASSCODE LOGIN
+  // ─────────────────────────────────────────────
   const handlePasscodeLogin = async () => {
-    if (!storedWallet) return setError('No wallet found');
+    if (!storedWallet) return setError('No wallet found.');
 
     setLoading(true);
     setError('');
 
     try {
-      const salt = getDeviceSalt();
-      if (!salt) throw new Error('Device not initialized');
+      const deviceSalt = getDeviceSalt();
+      if (!deviceSalt) throw new Error('Salt missing');
 
-      const key = await deriveKeyFromPasscode(passcode + salt);
+      const key = await deriveKeyFromPasscode(passcode + deviceSalt);
 
       const decryptedSeed = await decryptData(
         storedWallet.encryptedSeed,
@@ -119,31 +119,37 @@ const LoginPage = () => {
 
       const wallet = ethers.Wallet.fromPhrase(decryptedSeed);
 
-      // 🔐 NON-CUSTODIAL RULE: memory only
-      setRuntimeWallet(wallet);
+      setSessionWallet(wallet);
 
       await authenticate(wallet.address, wallet);
-    } catch {
-      setError('Invalid passcode');
-    } finally {
+    } catch (err) {
+      console.error(err);
+      setError('Invalid passcode.');
       setLoading(false);
     }
   };
 
-  // ─────────────────────────────
-  // BIOMETRIC LOGIN (safe placeholder)
-  // ─────────────────────────────
+  // ─────────────────────────────────────────────
+  // BIOMETRIC LOGIN
+  // ─────────────────────────────────────────────
   const handleBiometricLogin = async () => {
-    if (!storedWallet) return setError('No wallet');
-    if (!isBiometricAvailable()) return setError('Not supported');
+    if (!storedWallet) return setError('No wallet found.');
+    if (!isBiometricAvailable())
+      return setError('Biometrics not supported.');
 
     setLoading(true);
+    setError('');
 
     try {
-      const ok = await unlockLocalVault();
-      if (!ok) throw new Error('Biometric failed');
+      const success = await unlockLocalVault();
 
-      setError('Biometric unlocked (requires secure key integration)');
+      if (!success) throw new Error('Biometric failed');
+
+      if (!storedWallet.biometricEnabled) {
+        throw new Error('Biometric not enabled.');
+      }
+
+      setError('Biometric unlocked (needs secure key integration).');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -151,14 +157,14 @@ const LoginPage = () => {
     }
   };
 
-  // ─────────────────────────────
-  // SEED PHRASE LOGIN (FULL NON-CUSTODIAL)
-  // ─────────────────────────────
+  // ─────────────────────────────────────────────
+  // SEED PHRASE LOGIN
+  // ─────────────────────────────────────────────
   const handlePhraseLogin = async () => {
     const clean = phrase.trim();
 
-    if (clean.split(/\s+/).length < 12) {
-      return setError('Invalid seed phrase');
+    if (!clean || clean.split(/\s+/).length < 12) {
+      return setError('Invalid seed phrase.');
     }
 
     setLoading(true);
@@ -167,77 +173,146 @@ const LoginPage = () => {
     try {
       const wallet = ethers.Wallet.fromPhrase(clean);
 
-      // 🔐 STRICT RULE: never persist private key anywhere
-      setRuntimeWallet(wallet);
+      setSessionWallet(wallet);
 
       await authenticate(wallet.address, wallet);
-    } catch {
-      setError('Invalid phrase');
-    } finally {
+    } catch (err) {
+      setError('Invalid seed phrase.');
       setLoading(false);
     }
   };
 
-  // ─────────────────────────────
+  // ─────────────────────────────────────────────
   // UI
-  // ─────────────────────────────
+  // ─────────────────────────────────────────────
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
+    <div className="auth-page">
+      <div className="auth-card">
 
-        <h2 style={styles.title}>BlockVault</h2>
-        <p style={styles.subtitle}>Non-Custodial Wallet</p>
+        <h2>BlockVault</h2>
+        <p>Non-Custodial Access</p>
 
-        {error && <div style={styles.error}>{error}</div>}
+        {error && <div className="error-msg">{error}</div>}
 
+        {/* ============================= */}
+        {/* SELECT MODE */}
+        {/* ============================= */}
         {mode === 'select' && (
           <>
-            {isBiometricAvailable() && storedWallet?.biometricEnabled && (
-              <button onClick={handleBiometricLogin} style={styles.btn}>
-                <FontAwesomeIcon icon={faFingerprint} /> Biometrics
-              </button>
-            )}
+            {!hasWallet ? (
+              <>
+                <p>No wallet found on this device</p>
 
-            {storedWallet && (
-              <button onClick={() => setMode('passcode')} style={styles.btn}>
-                <FontAwesomeIcon icon={faShieldHalved} /> Passcode
-              </button>
-            )}
+                <button
+                  className="btn-primary"
+                  onClick={() => navigate('/register')}
+                >
+                  Create Wallet
+                </button>
 
-            <button onClick={() => setMode('phrase')} style={styles.outline}>
-              <FontAwesomeIcon icon={faKey} /> Seed Phrase
-            </button>
+                <button
+                  className="btn-gold-outline"
+                  onClick={() => setMode('phrase')}
+                >
+                  Import Existing Wallet
+                </button>
+              </>
+            ) : (
+              <>
+                {isBiometricAvailable() &&
+                  storedWallet?.biometricEnabled && (
+                    <button
+                      className="btn-primary"
+                      onClick={handleBiometricLogin}
+                      disabled={loading}
+                    >
+                      <FontAwesomeIcon icon={faFingerprint} /> Biometrics
+                    </button>
+                  )}
+
+                <button
+                  className="btn-primary"
+                  onClick={() => setMode('passcode')}
+                >
+                  <FontAwesomeIcon icon={faShieldHalved} /> Passcode
+                </button>
+
+                <button
+                  className="btn-gold-outline"
+                  onClick={() => setMode('phrase')}
+                >
+                  <FontAwesomeIcon icon={faKey} /> Import Wallet
+                </button>
+
+                <button
+                  className="btn-text"
+                  onClick={() => navigate('/register')}
+                >
+                  New user? Create Wallet
+                </button>
+              </>
+            )}
           </>
         )}
 
+        {/* ============================= */}
+        {/* PASSCODE */}
+        {/* ============================= */}
         {mode === 'passcode' && (
-          <form onSubmit={(e) => { e.preventDefault(); handlePasscodeLogin(); }}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handlePasscodeLogin();
+            }}
+          >
             <input
               type="password"
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
-              placeholder="Passcode"
+              placeholder="Enter passcode"
+              autoFocus
             />
-            <button disabled={loading}>
+
+            <button className="btn-primary" disabled={loading}>
               {loading ? 'Unlocking...' : 'Unlock'}
             </button>
-            <button type="button" onClick={() => setMode('select')}>
+
+            <button
+              type="button"
+              className="btn-text"
+              onClick={() => setMode('select')}
+            >
               Back
             </button>
           </form>
         )}
 
+        {/* ============================= */}
+        {/* PHRASE */}
+        {/* ============================= */}
         {mode === 'phrase' && (
-          <form onSubmit={(e) => { e.preventDefault(); handlePhraseLogin(); }}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handlePhraseLogin();
+            }}
+          >
             <textarea
               value={phrase}
               onChange={(e) => setPhrase(e.target.value)}
-              placeholder="12 / 24 word phrase"
+              placeholder="Enter 12/24 word seed phrase"
+              rows={4}
             />
-            <button disabled={loading}>
-              {loading ? 'Importing...' : 'Login'}
+
+            <button className="btn-primary" disabled={loading}>
+              {loading ? 'Importing...' : 'Import & Login'}
             </button>
-            <button type="button" onClick={() => setMode('select')}>
+
+            <button
+              type="button"
+              className="btn-text"
+              onClick={() => setMode('select')}
+            >
               Back
             </button>
           </form>
@@ -246,23 +321,6 @@ const LoginPage = () => {
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#0a0a0a',
-    padding: 20
-  },
-  card: { width: '100%', maxWidth: 420 },
-  title: { color: '#c9a84c', textAlign: 'center' },
-  subtitle: { color: '#888', textAlign: 'center', marginBottom: 30 },
-  error: { color: 'red', textAlign: 'center', marginBottom: 15 },
-  btn: { width: '100%', marginBottom: 10 },
-  outline: { width: '100%' }
 };
 
 export default LoginPage;
