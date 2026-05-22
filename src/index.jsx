@@ -6,7 +6,7 @@ import './styles/GlobalStyles.css';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { wagmiConfig, modal } from './wallet/walletConfig';
+import { wagmiConfig, modal } from './web3';
 
 // Create React Query client (required by wagmi v2)
 const queryClient = new QueryClient();
