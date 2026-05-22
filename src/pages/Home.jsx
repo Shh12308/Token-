@@ -20,7 +20,7 @@ import { useWeb3Modal } from '@web3modal/wagmi/react'
 import { useAccount } from 'wagmi'
 
 const RPCS = {
-  ethereum: "https://eth.llamarpc.com",
+  ethereum: "https://mainnet.infura.io/v3/3a6da968a84f464a996e215f3ce8ad20",
 };
 
 const CHAIN_INFO = {
@@ -66,7 +66,11 @@ const Home = () => {
       setLoading(true)
       setError('')
 
-      const provider = new ethers.JsonRpcProvider(RPCS.ethereum)
+      const provider = new ethers.JsonRpcProvider(
+  RPCS.ethereum,
+  undefined,
+  { staticNetwork: true }
+);
 
       const assetsList = []
 
