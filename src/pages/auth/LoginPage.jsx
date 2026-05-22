@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ethers } from 'ethers';
-import api from '../utils/api';
+import api from '../../utils/api';
 
 import {
   decryptData,
