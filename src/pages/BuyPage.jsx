@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { faArrowLeft, faCreditCard, faShieldAlt } from '@fortawesome/free-solid-svg-icons';
+import axios from 'axios';
+import {
+  faArrowLeft,
+  faCreditCard,
+  faShieldAlt
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import BottomNav from '../components/BottomNav';
 
+// ✅ NON-CUSTODIAL SESSION
 import { getSessionWallet } from '../utils/session';
+
+const API_BASE = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
 
 const SUPPORTED_NETWORKS = [
   { id: 'ethereum', name: 'Ethereum', symbol: 'ETH' },
@@ -20,13 +28,6 @@ const DEFAULT_CURRENCIES = {
   base: 'ETH',
 };
 
-// 🔥 Direct provider configs (NO BACKEND NEEDED)
-const PROVIDERS = {
-  moonpay: 'https://buy.moonpay.com',
-  ramp: 'https://buy.ramp.network',
-  transak: 'https://global.transak.com'
-};
-
 const BuyPage = () => {
   const navigate = useNavigate();
 
@@ -37,114 +38,159 @@ const BuyPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // ─────────────────────────────────────────────
+  // NETWORK CHANGE
+  // ─────────────────────────────────────────────
   const handleNetworkChange = (e) => {
     const net = e.target.value;
     setNetwork(net);
     setCurrency(DEFAULT_CURRENCIES[net] || 'ETH');
   };
 
+  const handleAmountPreset = (value) => {
+    setAmount(value);
+  };
+
+  // ─────────────────────────────────────────────
+  // 🔥 NON-CUSTODIAL BUY FLOW
+  // ─────────────────────────────────────────────
   const handleBuy = async () => {
     setLoading(true);
     setError('');
 
-    // ✅ Get wallet from session (NOT localStorage)
-    const wallet = getSessionWallet();
-
-    if (!wallet) {
-      setError('Wallet not loaded. Please login again.');
-      setLoading(false);
-      return;
-    }
-
     try {
-      const address = wallet.address;
+      const sessionWallet = getSessionWallet();
 
-      // 🔥 Build direct provider URL (non-custodial)
-      let url = '';
-
-      if (provider === 'moonpay') {
-        url = `${PROVIDERS.moonpay}?apiKey=YOUR_API_KEY
-          &walletAddress=${address}
-          &baseCurrencyCode=${currency}
-          &quoteCurrencyAmount=${amount}`;
+      if (!sessionWallet) {
+        throw new Error('Wallet not unlocked. Please login again.');
       }
 
-      if (provider === 'ramp') {
-        url = `${PROVIDERS.ramp}?userAddress=${address}
-          &swapAsset=${currency}
-          &fiatValue=${amount}`;
+      const walletAddress = sessionWallet.address;
+
+      // 🔐 SIGN REQUEST (PROVES OWNERSHIP)
+      const message = `Authorize buy session at ${Date.now()}`;
+      const signature = await sessionWallet.signMessage(message);
+
+      // 🚀 CALL BACKEND
+      const res = await axios.post(`${API_BASE}/fiat/onramp/session`, {
+        walletAddress,
+        chain: network,
+        amount,
+        currency,
+        provider,
+        signature,
+        message
+      });
+
+      if (res.data.redirectUrl) {
+        window.location.href = res.data.redirectUrl;
+      } else {
+        throw new Error('No redirect URL received.');
       }
-
-      if (provider === 'transak') {
-        url = `${PROVIDERS.transak}?walletAddress=${address}
-          &cryptoCurrencyCode=${currency}
-          &fiatAmount=${amount}`;
-      }
-
-      // Clean URL
-      url = url.replace(/\s+/g, '');
-
-      // 🚀 Redirect directly (no backend)
-      window.location.href = url;
 
     } catch (err) {
       console.error(err);
-      setError('Failed to initiate purchase.');
+      setError(err.message || 'Failed to initiate buy.');
       setLoading(false);
     }
   };
 
+  // ─────────────────────────────────────────────
+  // UI
+  // ─────────────────────────────────────────────
   return (
     <div className="dashboard-container-gold">
       <header className="top-header-gold">
-        <div onClick={() => navigate('/app')}>
-          <FontAwesomeIcon icon={faArrowLeft} /> Back
+        <div className="header-left" onClick={() => navigate('/app')}>
+          <FontAwesomeIcon icon={faArrowLeft} />
+          <span style={{ marginLeft: 8 }}>Back</span>
         </div>
       </header>
 
       <main className="main-scroll-area-gold">
         <div className="card buy-card-gold">
-          <FontAwesomeIcon icon={faCreditCard} size="2x" color="#c9a84c" />
-          <h2>Buy Crypto</h2>
-          <p style={{ color: '#888' }}>
-            Funds go directly to your wallet
-          </p>
+          <div className="buy-header-gold">
+            <FontAwesomeIcon icon={faCreditCard} size="2x" color="#c9a84c" />
+            <h2>Buy Crypto</h2>
+            <p style={{ color: '#888', fontSize: 14, marginTop: -10 }}>
+              Funds sent directly to your wallet
+            </p>
+          </div>
 
-          {error && <div className="error">{error}</div>}
+          {error && (
+            <div className="error-msg">
+              {error}
+            </div>
+          )}
 
-          <select value={provider} onChange={(e) => setProvider(e.target.value)}>
-            <option value="moonpay">MoonPay</option>
-            <option value="ramp">Ramp</option>
-            <option value="transak">Transak</option>
-          </select>
+          {/* PROVIDER */}
+          <div className="input-group">
+            <label>Provider</label>
+            <select value={provider} onChange={(e) => setProvider(e.target.value)}>
+              <option value="moonpay">MoonPay</option>
+              <option value="ramp">Ramp Network</option>
+              <option value="transak">Transak</option>
+            </select>
+          </div>
 
-          <select value={network} onChange={handleNetworkChange}>
-            {SUPPORTED_NETWORKS.map(n => (
-              <option key={n.id} value={n.id}>{n.name}</option>
-            ))}
-          </select>
+          {/* NETWORK */}
+          <div className="input-group">
+            <label>Network</label>
+            <select value={network} onChange={handleNetworkChange}>
+              {SUPPORTED_NETWORKS.map(n => (
+                <option key={n.id} value={n.id}>{n.name}</option>
+              ))}
+            </select>
+          </div>
 
-          <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-            <option value={DEFAULT_CURRENCIES[network]}>
-              {DEFAULT_CURRENCIES[network]}
-            </option>
-            <option value="USDC">USDC</option>
-            <option value="USDT">USDT</option>
-          </select>
+          {/* CURRENCY */}
+          <div className="input-group">
+            <label>Currency</label>
+            <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              <option value={DEFAULT_CURRENCIES[network]}>
+                {DEFAULT_CURRENCIES[network]}
+              </option>
+              <option value="USDC">USDC</option>
+              <option value="USDT">USDT</option>
+              <option value="DAI">DAI</option>
+            </select>
+          </div>
 
-          <input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
-          />
+          {/* AMOUNT */}
+          <div className="input-group">
+            <label>Amount (USD)</label>
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(Number(e.target.value))}
+            />
 
-          <button onClick={handleBuy} disabled={loading}>
+            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+              {[50, 100, 250, 500].map(val => (
+                <button
+                  key={val}
+                  className={`preset-btn ${amount === val ? 'active' : ''}`}
+                  onClick={() => handleAmountPreset(val)}
+                >
+                  ${val}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* BUY BUTTON */}
+          <button
+            className="btn-primary btn-full"
+            onClick={handleBuy}
+            disabled={loading}
+          >
             {loading ? 'Processing...' : `Buy ${currency}`}
           </button>
 
+          {/* SECURITY NOTE */}
           <div className="secure-note-gold">
             <FontAwesomeIcon icon={faShieldAlt} />
-            <span>Non-Custodial</span>
+            <span>Non-Custodial Purchase</span>
           </div>
         </div>
       </main>
