@@ -4,7 +4,7 @@ import { faArrowLeft, faCreditCard, faShieldAlt } from '@fortawesome/free-solid-
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import BottomNav from '../components/BottomNav';
 
-import { getSessionWallet } from '../../utils/session';
+import { getSessionWallet } from '../utils/session';
 
 const SUPPORTED_NETWORKS = [
   { id: 'ethereum', name: 'Ethereum', symbol: 'ETH' },
