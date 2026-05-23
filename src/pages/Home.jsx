@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
+import { useNavigate } from 'react-router-dom';
+
 import { getSessionWallet } from '../utils/session';
 import { getProvider } from '../utils/provider';
 
@@ -15,6 +17,8 @@ const Home = () => {
   const [assets, setAssets] = useState([]);
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     load();
@@ -33,7 +37,7 @@ const Home = () => {
       const balance = await provider.getBalance(wallet.address);
       const eth = parseFloat(ethers.formatEther(balance));
 
-      const price = 3500; // replace with API later
+      const price = 3500; // TODO: replace with API
       const usd = eth * price;
 
       setAssets([
@@ -63,7 +67,11 @@ const Home = () => {
           <h3>Wallet</h3>
           <p style={styles.address}>
             {address.slice(0, 6)}...{address.slice(-4)}
-            <Copy size={14} style={{ marginLeft: 6, cursor: 'pointer' }} onClick={copyAddress} />
+            <Copy
+              size={14}
+              style={{ marginLeft: 6, cursor: 'pointer' }}
+              onClick={copyAddress}
+            />
           </p>
         </div>
       </div>
@@ -82,10 +90,26 @@ const Home = () => {
 
       {/* Actions */}
       <div style={styles.actions}>
-        <Action icon={<Send size={18} />} label="Send" />
-        <Action icon={<ArrowDown size={18} />} label="Receive" />
-        <Action icon={<Repeat size={18} />} label="Swap" />
-        <Action icon={<Plus size={18} />} label="Buy" />
+        <Action
+          icon={<Send size={18} />}
+          label="Send"
+          onClick={() => navigate('/send')}
+        />
+        <Action
+          icon={<ArrowDown size={18} />}
+          label="Receive"
+          onClick={() => navigate('/receive')}
+        />
+        <Action
+          icon={<Repeat size={18} />}
+          label="Swap"
+          onClick={() => navigate('/swap')}
+        />
+        <Action
+          icon={<Plus size={18} />}
+          label="Buy"
+          onClick={() => navigate('/buy')}
+        />
       </div>
 
       {/* Assets */}
@@ -108,8 +132,13 @@ const Home = () => {
   );
 };
 
-const Action = ({ icon, label }) => (
-  <div style={styles.actionBtn}>
+const Action = ({ icon, label, onClick }) => (
+  <div
+    style={styles.actionBtn}
+    onClick={onClick}
+    onMouseDown={(e) => (e.currentTarget.style.opacity = 0.6)}
+    onMouseUp={(e) => (e.currentTarget.style.opacity = 1)}
+  >
     {icon}
     <span style={styles.actionText}>{label}</span>
   </div>
@@ -153,7 +182,8 @@ const styles = {
     borderRadius: 10,
     width: 70,
     textAlign: 'center',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    transition: '0.2s'
   },
   actionText: {
     fontSize: 11,
