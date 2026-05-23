@@ -31,30 +31,21 @@ const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // ─────────────────────────────
-  // Generate seed once
-  // ─────────────────────────────
   useEffect(() => {
     if (step === 3 && seed.length === 0) {
       setSeed(generateSeedPhrase());
     }
   }, [step]);
 
-  // ─────────────────────────────
-  // CREATE WALLET (NON-CUSTODIAL)
-  // ─────────────────────────────
   const handleCreate = async () => {
     try {
       setLoading(true);
       setError('');
 
-      if (!saved) throw new Error('Confirm you saved seed phrase');
-      if (!passcode || passcode.length < 4)
-        throw new Error('Passcode too weak');
+      if (!saved) throw new Error('Confirm seed backup');
+      if (!passcode || passcode.length < 4) throw new Error('Weak passcode');
 
       const phrase = seed.join(' ');
-
-      // Ethers v6 safe creation
       const wallet = ethers.Wallet.fromPhrase(phrase);
 
       const salt = getDeviceSalt();
@@ -71,156 +62,98 @@ const RegisterPage = () => {
         })
       );
 
-      // session = active wallet
       setSessionWallet(wallet);
-
       navigate('/app/dashboard');
     } catch (err) {
-      setError(err.message || 'Failed to create wallet');
+      setError(err.message || 'Failed');
     } finally {
       setLoading(false);
     }
   };
 
-  // ─────────────────────────────
-  // UI
-  // ─────────────────────────────
   return (
-    <div style={styles.container}>
+    <div className="auth-page">
+      <div className="auth-card">
 
-      <h2 style={styles.title}>Create Wallet</h2>
+        <h2>Create Wallet</h2>
+        <p>Secure non-custodial setup</p>
 
-      {error && <p style={styles.error}>{error}</p>}
+        {error && <div className="error-msg">{error}</div>}
 
-      {/* STEP 1 */}
-      {step === 1 && (
-        <button style={styles.button} onClick={() => setStep(2)}>
-          Start
-        </button>
-      )}
-
-      {/* STEP 2 */}
-      {step === 2 && (
-        <div style={styles.card}>
-          <input
-            type="password"
-            value={passcode}
-            onChange={(e) => setPasscode(e.target.value)}
-            placeholder="Create Passcode"
-            style={styles.input}
-          />
-
-          <button
-            style={styles.button}
-            onClick={() => {
-              if (!passcode || passcode.length < 4) {
-                setError('Passcode must be at least 4 characters');
-                return;
-              }
-              setStep(3);
-            }}
-          >
-            Continue
-          </button>
+        {/* PROGRESS */}
+        <div className="progress-bar">
+          <div className={`progress-step ${step >= 1 ? 'active' : ''}`}>Setup</div>
+          <div className={`progress-step ${step >= 2 ? 'active' : ''}`}>Passcode</div>
+          <div className={`progress-step ${step >= 3 ? 'active' : ''}`}>Backup</div>
         </div>
-      )}
 
-      {/* STEP 3 */}
-      {step === 3 && (
-        <div style={styles.card}>
+        {/* STEP 1 */}
+        {step === 1 && (
+          <button className="btn-primary" onClick={() => setStep(2)}>
+            Start Wallet Creation
+          </button>
+        )}
 
-          <p style={styles.warning}>
-            ⚠️ Save this seed phrase. It is never stored again.
-          </p>
-
-          <div style={styles.seedGrid}>
-            {seed.map((w, i) => (
-              <div key={i} style={styles.seedWord}>
-                {i + 1}. {w}
-              </div>
-            ))}
-          </div>
-
-          <label style={styles.checkbox}>
+        {/* STEP 2 */}
+        {step === 2 && (
+          <>
             <input
-              type="checkbox"
-              checked={saved}
-              onChange={(e) => setSaved(e.target.checked)}
+              type="password"
+              placeholder="Create Passcode"
+              value={passcode}
+              onChange={(e) => setPasscode(e.target.value)}
             />
-            I have safely saved my seed phrase
-          </label>
 
-          <button
-            style={{
-              ...styles.button,
-              opacity: saved && !loading ? 1 : 0.5,
-              cursor: saved && !loading ? 'pointer' : 'not-allowed'
-            }}
-            disabled={!saved || loading}
-            onClick={handleCreate}
-          >
-            {loading ? 'Creating Wallet...' : 'Create Wallet'}
-          </button>
-        </div>
-      )}
+            <button className="btn-primary" onClick={() => setStep(3)}>
+              Continue
+            </button>
+          </>
+        )}
+
+        {/* STEP 3 */}
+        {step === 3 && (
+          <>
+            <p className="text-muted">Write down your seed phrase</p>
+
+            <div className="seed-phrase-grid">
+              {seed.map((w, i) => (
+                <div key={i} className="seed-word">
+                  {i + 1}. {w}
+                </div>
+              ))}
+            </div>
+
+            <div className="checkbox-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={saved}
+                  onChange={(e) => setSaved(e.target.checked)}
+                />
+                I have safely saved my seed phrase
+              </label>
+            </div>
+
+            <button
+              className="btn-primary btn-full"
+              disabled={!saved || loading}
+              onClick={handleCreate}
+            >
+              {loading ? 'Creating...' : 'Create Wallet'}
+            </button>
+
+            <button
+              className="btn-text"
+              onClick={() => setStep(2)}
+            >
+              Back
+            </button>
+          </>
+        )}
+
+      </div>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    maxWidth: 420,
-    margin: '0 auto',
-    padding: 20,
-    fontFamily: 'sans-serif'
-  },
-  title: {
-    textAlign: 'center'
-  },
-  card: {
-    marginTop: 20,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12
-  },
-  input: {
-    padding: 12,
-    borderRadius: 8,
-    border: '1px solid #ccc'
-  },
-  button: {
-    padding: 12,
-    borderRadius: 8,
-    border: 'none',
-    background: '#111',
-    color: '#fff',
-    cursor: 'pointer'
-  },
-  seedGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: 8,
-    background: '#f5f5f5',
-    padding: 12,
-    borderRadius: 8
-  },
-  seedWord: {
-    fontSize: 12
-  },
-  checkbox: {
-    fontSize: 12,
-    display: 'flex',
-    gap: 8,
-    alignItems: 'center'
-  },
-  warning: {
-    fontSize: 12,
-    color: '#b00020'
-  },
-  error: {
-    color: 'red',
-    fontSize: 12
-  }
 };
 
 export default RegisterPage;
