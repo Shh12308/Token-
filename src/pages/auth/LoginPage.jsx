@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { ethers } from 'ethers';
 
 import {
@@ -8,14 +7,7 @@ import {
   deriveKeyFromPasscode
 } from '../../utils/wallet';
 
-import {
-  setSessionWallet,
-  getSessionWallet
-} from '../../utils/session';
-
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL ||
-  'https://blockvault-backend-production.up.railway.app/api';
+import { setSessionWallet, getSessionWallet } from '../../utils/session';
 
 const STORAGE_KEY = 'wallet_encrypted';
 
@@ -28,9 +20,7 @@ const getStoredWallet = () => {
   }
 };
 
-const getDeviceSalt = () => {
-  return localStorage.getItem('device_salt');
-};
+const getDeviceSalt = () => localStorage.getItem('device_salt');
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -44,141 +34,103 @@ const LoginPage = () => {
   const storedWallet = getStoredWallet();
 
   useEffect(() => {
-    const session = getSessionWallet();
-    if (session) {
-      navigate('/app/dashboard');
-    }
-  }, [navigate]);
+    if (getSessionWallet()) navigate('/app/dashboard');
+  }, []);
 
-  // ─────────────────────────────
-  // OPTIONAL BACKEND AUTH (SESSION ONLY)
-  // ─────────────────────────────
-  const authenticate = async (wallet) => {
-    try {
-      const nonceRes = await axios.post(`${API_BASE_URL}/auth/nonce`, {
-        walletAddress: wallet.address
-      });
-
-      const message = nonceRes.data.messageToSign;
-      const signature = await wallet.signMessage(message);
-
-      const res = await axios.post(`${API_BASE_URL}/auth/verify`, {
-        walletAddress: wallet.address,
-        signature,
-        message
-      });
-
-      if (res.data.token) {
-        localStorage.setItem('authToken', res.data.token);
-      }
-    } catch (err) {
-      console.log('Backend auth failed (non-blocking)');
-    }
-  };
-
-  // ─────────────────────────────
-  // PASSCODE LOGIN (NON-CUSTODIAL)
-  // ─────────────────────────────
   const handlePasscodeLogin = async () => {
     try {
       setLoading(true);
       setError('');
 
-      if (!passcode) throw new Error('Enter passcode');
-
       const salt = getDeviceSalt();
       if (!salt) throw new Error('Missing device salt');
-
       if (!storedWallet) throw new Error('No wallet found');
 
       const key = await deriveKeyFromPasscode(passcode + salt);
 
-      const decryptedPhrase = await decryptData(
+      const decrypted = await decryptData(
         storedWallet.encryptedSeed,
         key,
         storedWallet.iv
       );
 
-      const wallet = ethers.Wallet.fromPhrase(decryptedPhrase);
+      const wallet = ethers.Wallet.fromPhrase(decrypted);
 
       setSessionWallet(wallet);
-
-      await authenticate(wallet);
-
       navigate('/app/dashboard');
-    } catch (e) {
+    } catch {
       setError('Invalid passcode');
     } finally {
       setLoading(false);
     }
   };
 
-  // ─────────────────────────────
-  // SEED LOGIN (IMPORT WALLET)
-  // ─────────────────────────────
   const handlePhraseLogin = async () => {
     try {
       setLoading(true);
       setError('');
 
-      if (!phrase.trim()) throw new Error('Enter seed phrase');
-
       const wallet = ethers.Wallet.fromPhrase(phrase.trim());
 
       setSessionWallet(wallet);
-
-      await authenticate(wallet);
-
       navigate('/app/dashboard');
-    } catch (e) {
+    } catch {
       setError('Invalid seed phrase');
     } finally {
       setLoading(false);
     }
   };
 
-  // ─────────────────────────────
-  // UI
-  // ─────────────────────────────
   return (
     <div className="auth-page">
       <div className="auth-card">
 
         <h2>BlockVault</h2>
+        <p>Secure Web3 Wallet</p>
 
         {error && <div className="error-msg">{error}</div>}
 
         {mode === 'select' && (
-          <>
+          <div className="auth-options">
+
             {!storedWallet ? (
-              <button onClick={() => navigate('/register')}>
+              <button className="btn-primary" onClick={() => navigate('/register')}>
                 Create Wallet
               </button>
             ) : (
               <>
-                <button onClick={() => setMode('passcode')}>
+                <button className="btn-primary" onClick={() => setMode('passcode')}>
                   Unlock with Passcode
                 </button>
 
-                <button onClick={() => setMode('phrase')}>
+                <button className="btn-secondary" onClick={() => setMode('phrase')}>
                   Import Seed Phrase
                 </button>
               </>
             )}
-          </>
+
+          </div>
         )}
 
         {mode === 'passcode' && (
           <>
             <input
               type="password"
+              placeholder="Enter Passcode"
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
-              placeholder="Passcode"
             />
 
-            <button onClick={handlePasscodeLogin}>
-              {loading ? 'Unlocking...' : 'Unlock'}
+            <button
+              className="btn-primary"
+              onClick={handlePasscodeLogin}
+              disabled={loading}
+            >
+              {loading ? 'Unlocking...' : 'Unlock Wallet'}
+            </button>
+
+            <button className="btn-text" onClick={() => setMode('select')}>
+              Back
             </button>
           </>
         )}
@@ -186,13 +138,21 @@ const LoginPage = () => {
         {mode === 'phrase' && (
           <>
             <textarea
+              placeholder="Enter Seed Phrase"
               value={phrase}
               onChange={(e) => setPhrase(e.target.value)}
-              placeholder="Enter seed phrase"
             />
 
-            <button onClick={handlePhraseLogin}>
-              {loading ? 'Importing...' : 'Import'}
+            <button
+              className="btn-primary"
+              onClick={handlePhraseLogin}
+              disabled={loading}
+            >
+              {loading ? 'Importing...' : 'Import Wallet'}
+            </button>
+
+            <button className="btn-text" onClick={() => setMode('select')}>
+              Back
             </button>
           </>
         )}
