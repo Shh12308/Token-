@@ -3,8 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ethers } from 'ethers';
 
-import { decryptData, deriveKeyFromPasscode, isBiometricAvailable } from '../../utils/wallet';
-import { setSessionWallet, getSessionWallet } from '../../utils/session';
+import {
+  decryptData,
+  deriveKeyFromPasscode
+} from '../../utils/wallet';
+
+import {
+  setSessionWallet,
+  getSessionWallet
+} from '../../utils/session';
 
 const API_BASE_URL =
   process.env.REACT_APP_API_URL ||
@@ -13,8 +20,12 @@ const API_BASE_URL =
 const STORAGE_KEY = 'wallet_encrypted';
 
 const getStoredWallet = () => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : null;
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch {
+    return null;
+  }
 };
 
 const getDeviceSalt = () => {
@@ -33,57 +44,68 @@ const LoginPage = () => {
   const storedWallet = getStoredWallet();
 
   useEffect(() => {
-    if (getSessionWallet()) {
+    const session = getSessionWallet();
+    if (session) {
       navigate('/app/dashboard');
     }
-  }, []);
+  }, [navigate]);
 
   // ─────────────────────────────
-  // AUTH SIGN-IN (SIWE)
+  // OPTIONAL BACKEND AUTH (SESSION ONLY)
   // ─────────────────────────────
   const authenticate = async (wallet) => {
-    const nonceRes = await axios.post(`${API_BASE_URL}/auth/nonce`, {
-      walletAddress: wallet.address
-    });
+    try {
+      const nonceRes = await axios.post(`${API_BASE_URL}/auth/nonce`, {
+        walletAddress: wallet.address
+      });
 
-    const message = nonceRes.data.messageToSign;
-    const signature = await wallet.signMessage(message);
+      const message = nonceRes.data.messageToSign;
+      const signature = await wallet.signMessage(message);
 
-    const res = await axios.post(`${API_BASE_URL}/auth/verify`, {
-      walletAddress: wallet.address,
-      signature,
-      message
-    });
+      const res = await axios.post(`${API_BASE_URL}/auth/verify`, {
+        walletAddress: wallet.address,
+        signature,
+        message
+      });
 
-    if (res.data.token) {
-      localStorage.setItem('authToken', res.data.token);
-      navigate('/app/dashboard');
+      if (res.data.token) {
+        localStorage.setItem('authToken', res.data.token);
+      }
+    } catch (err) {
+      console.log('Backend auth failed (non-blocking)');
     }
   };
 
   // ─────────────────────────────
-  // PASSCODE LOGIN
+  // PASSCODE LOGIN (NON-CUSTODIAL)
   // ─────────────────────────────
   const handlePasscodeLogin = async () => {
     try {
       setLoading(true);
       setError('');
 
+      if (!passcode) throw new Error('Enter passcode');
+
       const salt = getDeviceSalt();
       if (!salt) throw new Error('Missing device salt');
 
+      if (!storedWallet) throw new Error('No wallet found');
+
       const key = await deriveKeyFromPasscode(passcode + salt);
 
-      const decrypted = await decryptData(
+      const decryptedPhrase = await decryptData(
         storedWallet.encryptedSeed,
         key,
         storedWallet.iv
       );
 
-      const wallet = ethers.Wallet.fromPhrase(decrypted);
+      const wallet = ethers.Wallet.fromPhrase(decryptedPhrase);
 
       setSessionWallet(wallet);
+
       await authenticate(wallet);
+
+      navigate('/app/dashboard');
     } catch (e) {
       setError('Invalid passcode');
     } finally {
@@ -92,17 +114,22 @@ const LoginPage = () => {
   };
 
   // ─────────────────────────────
-  // SEED LOGIN
+  // SEED LOGIN (IMPORT WALLET)
   // ─────────────────────────────
   const handlePhraseLogin = async () => {
     try {
       setLoading(true);
       setError('');
 
+      if (!phrase.trim()) throw new Error('Enter seed phrase');
+
       const wallet = ethers.Wallet.fromPhrase(phrase.trim());
 
       setSessionWallet(wallet);
+
       await authenticate(wallet);
+
+      navigate('/app/dashboard');
     } catch (e) {
       setError('Invalid seed phrase');
     } finally {
@@ -111,7 +138,7 @@ const LoginPage = () => {
   };
 
   // ─────────────────────────────
-  // UI (simplified)
+  // UI
   // ─────────────────────────────
   return (
     <div className="auth-page">
@@ -134,7 +161,7 @@ const LoginPage = () => {
                 </button>
 
                 <button onClick={() => setMode('phrase')}>
-                  Import Seed
+                  Import Seed Phrase
                 </button>
               </>
             )}
@@ -161,11 +188,11 @@ const LoginPage = () => {
             <textarea
               value={phrase}
               onChange={(e) => setPhrase(e.target.value)}
-              placeholder="Seed phrase"
+              placeholder="Enter seed phrase"
             />
 
             <button onClick={handlePhraseLogin}>
-              Import
+              {loading ? 'Importing...' : 'Import'}
             </button>
           </>
         )}
