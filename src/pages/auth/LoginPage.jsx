@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ethers } from 'ethers';
-import api from '../utils/api';
-import { saveSessionWallet } from '../utils/session';
+import api from '../../utils/api';
+import { saveSessionWallet } from '../../utils/session';
 
 const login = () => {
   const navigate = useNavigate();
