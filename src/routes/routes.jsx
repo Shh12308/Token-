@@ -22,7 +22,7 @@ import Security from '../pages/Security';
 import Profile from '../pages/Profile';
 
 // --- AUTH ---
-import LoginPage from '../pages/auth/LoginPage';
+import login from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
 
 // --- 404 PAGE ---
@@ -52,7 +52,7 @@ const AppRoutes = () => {
         <Route path="/profile" element={<Profile />} />
         
         {/* --- AUTH PAGES --- */}
-        <Route path="/auth/login" element={<LoginPage />} />
+        <Route path="/auth/login" element={<login />} />
         <Route path="/auth/register" element={<RegisterPage />} />
 
         {/* ✅ 404 CATCH-ALL ROUTE */}
