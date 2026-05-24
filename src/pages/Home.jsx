@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ethers } from 'ethers';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 import { getSessionWallet } from '../utils/session';
-import { getProvider } from '../utils/provider';
 
 import {
   Send,
@@ -13,10 +12,15 @@ import {
   Copy
 } from 'lucide-react';
 
+const API_BASE =
+  process.env.REACT_APP_API_URL ||
+  'https://blockvault-backend-production.up.railway.app/api';
+
 const Home = () => {
   const [assets, setAssets] = useState([]);
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(true);
+  const [totalBalance, setTotalBalance] = useState("0.00");
 
   const navigate = useNavigate();
 
@@ -31,24 +35,22 @@ const Home = () => {
 
       setAddress(wallet.address);
 
-      const provider = getProvider();
-      await provider.getBlockNumber();
+      const token = localStorage.getItem('authToken');
 
-      const balance = await provider.getBalance(wallet.address);
-      const eth = parseFloat(ethers.formatEther(balance));
-
-      const price = 3500; // TODO: replace with API
-      const usd = eth * price;
-
-      setAssets([
-        {
-          symbol: 'ETH',
-          balance: eth.toFixed(4),
-          usd: usd.toFixed(2)
+      const res = await axios.get(`${API_BASE}/wallet/portfolio`, {
+        headers: {
+          Authorization: `Bearer ${token}`
         }
-      ]);
+      });
+
+      const portfolio = res.data.portfolio?.ethereum?.assets || [];
+      const total = res.data.totalBalance || "0.00";
+
+      setAssets(portfolio);
+      setTotalBalance(total);
+
     } catch (err) {
-      console.error(err);
+      console.error('Portfolio load error:', err);
     } finally {
       setLoading(false);
     }
@@ -65,8 +67,12 @@ const Home = () => {
       <div style={styles.header}>
         <div>
           <h3>Wallet</h3>
+
           <p style={styles.address}>
-            {address.slice(0, 6)}...{address.slice(-4)}
+            {address
+              ? `${address.slice(0, 6)}...${address.slice(-4)}`
+              : 'No wallet'}
+
             <Copy
               size={14}
               style={{ marginLeft: 6, cursor: 'pointer' }}
@@ -82,50 +88,38 @@ const Home = () => {
       ) : (
         <div style={styles.balanceCard}>
           <p style={{ opacity: 0.6 }}>Total Balance</p>
-          <h1>
-            ${assets.reduce((sum, a) => sum + parseFloat(a.usd), 0).toFixed(2)}
-          </h1>
+          <h1>${totalBalance}</h1>
         </div>
       )}
 
       {/* Actions */}
       <div style={styles.actions}>
-        <Action
-          icon={<Send size={18} />}
-          label="Send"
-          onClick={() => navigate('/send')}
-        />
-        <Action
-          icon={<ArrowDown size={18} />}
-          label="Receive"
-          onClick={() => navigate('/receive')}
-        />
-        <Action
-          icon={<Repeat size={18} />}
-          label="Swap"
-          onClick={() => navigate('/swap')}
-        />
-        <Action
-          icon={<Plus size={18} />}
-          label="Buy"
-          onClick={() => navigate('/buy')}
-        />
+        <Action icon={<Send size={18} />} label="Send" onClick={() => navigate('/send')} />
+        <Action icon={<ArrowDown size={18} />} label="Receive" onClick={() => navigate('/receive')} />
+        <Action icon={<Repeat size={18} />} label="Swap" onClick={() => navigate('/swap')} />
+        <Action icon={<Plus size={18} />} label="Buy" onClick={() => navigate('/buy')} />
       </div>
 
       {/* Assets */}
       <div style={styles.assetList}>
-        {assets.map((a, i) => (
-          <div key={i} style={styles.assetItem}>
-            <div>
-              <strong>{a.symbol}</strong>
-              <p style={styles.subText}>{a.balance} {a.symbol}</p>
-            </div>
+        {assets.length === 0 ? (
+          <p style={{ opacity: 0.5 }}>No assets found</p>
+        ) : (
+          assets.map((a, i) => (
+            <div key={i} style={styles.assetItem}>
+              <div>
+                <strong>{a.symbol}</strong>
+                <p style={styles.subText}>
+                  {a.balance} {a.symbol}
+                </p>
+              </div>
 
-            <div style={{ textAlign: 'right' }}>
-              <strong>${a.usd}</strong>
+              <div style={{ textAlign: 'right' }}>
+                <strong>${a.value}</strong>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
     </div>
@@ -136,8 +130,6 @@ const Action = ({ icon, label, onClick }) => (
   <div
     style={styles.actionBtn}
     onClick={onClick}
-    onMouseDown={(e) => (e.currentTarget.style.opacity = 0.6)}
-    onMouseUp={(e) => (e.currentTarget.style.opacity = 1)}
   >
     {icon}
     <span style={styles.actionText}>{label}</span>
@@ -182,8 +174,7 @@ const styles = {
     borderRadius: 10,
     width: 70,
     textAlign: 'center',
-    cursor: 'pointer',
-    transition: '0.2s'
+    cursor: 'pointer'
   },
   actionText: {
     fontSize: 11,
