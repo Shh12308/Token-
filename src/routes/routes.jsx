@@ -1,65 +1,62 @@
-import React from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
+import { View, Button, Text, TextInput, Alert } from 'react-native';
+import { createWallet, importWallet } from './services/crypto';
+import { getBalance, sendTransaction } from './services/rpc';
+import { getBuyUrl } from './services/fiat';
+import { getSwapQuote } from './services/swap';
 
-// --- PAGES ---
-import Home from '../pages/Home';
-import AdminDashboard from '../components/AdminDashboard';
-import AssetPage from '../pages/AssetPage';
-import ImportWalletPage from '../pages/Importwallet';
-import CreateWalletPage from '../pages/Createwalletpage';
-import Staking from '../pages/Staking';
-import KYCPage from '../pages/KYCPage';
-import BuyPage from '../pages/BuyPage';
-import ReceivePage from '../pages/ReceivePage';
-import SendPage from '../pages/SendPage';
-import Search from '../pages/Search';
-import NFTBrowsePage from '../pages/NFTBrowsePage';
-import SwapPage from '../pages/SwapPage';
-import SettingsPage from '../pages/SettingsPage';
-import Security from '../pages/Security';
+export default function App() {
+  const [wallet, setWallet] = useState(null);
+  const [balance, setBalance] = useState('0');
+  const [sendTo, setSendTo] = useState('');
+  const [amount, setAmount] = useState('');
 
-import Profile from '../pages/Profile';
+  const handleCreate = () => {
+    const newWallet = createWallet();
+    setWallet(newWallet);
+    Alert.alert("Wallet Created", "Save your seed: " + newWallet.mnemonic);
+  };
 
-// --- AUTH ---
-import login from '../pages/auth/LoginPage';
-import RegisterPage from '../pages/auth/RegisterPage';
+  const refreshBalance = async () => {
+    if(wallet) {
+      const bal = await getBalance(wallet.address);
+      setBalance(bal);
+    }
+  };
 
-// --- 404 PAGE ---
-import NotFound from '../pages/NotFound';
-
-const AppRoutes = () => {
-  const location = useLocation();
+  const handleSend = async () => {
+    try {
+      const hash = await sendTransaction(wallet.privateKey, sendTo, amount);
+      Alert.alert("Sent!", "Tx Hash: " + hash);
+    } catch (e) {
+      Alert.alert("Error", e.message);
+    }
+  };
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<Home />} />
-        <Route path="/stake" element={<Staking />} />
-        <Route path="/kyc" element={<KYCPage />} />
-        <Route path="/buy" element={<BuyPage />} />
-        <Route path="/app/wallets/import" element={<ImportWalletPage />} />
-        <Route path="/app/wallets/create" element={<CreateWalletPage />} />
-        <Route path="/app/asset" element={<AssetPage />} />                     
-        <Route path="/send" element={<SendPage />} />
-        <Route path="/receive" element={<ReceivePage />} />
-        <Route path="/nft" element={<NFTBrowsePage />} />
-        <Route path="/swap" element={<SwapPage />} />
-        <Route path="/security" element={<Security />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        
-        <Route path="/profile" element={<Profile />} />
-        
-        {/* --- AUTH PAGES --- */}
-        <Route path="/auth/login" element={<login />} />
-        <Route path="/auth/register" element={<RegisterPage />} />
+    <View style={{ padding: 20, marginTop: 50 }}>
+      {!wallet ? (
+        <Button title="Create Wallet" onPress={handleCreate} />
+      ) : (
+        <>
+          <Text>Address: {wallet.address}</Text>
+          <Text>Balance: {balance} ETH</Text>
+          <Button title="Refresh Balance" onPress={refreshBalance} />
+          
+          <View style={{ marginTop: 20 }}>
+            <TextInput placeholder="Send To (Address)" onChangeText={setSendTo} />
+            <TextInput placeholder="Amount (ETH)" onChangeText={setAmount} />
+            <Button title="Send ETH" onPress={handleSend} />
+          </View>
 
-        {/* ✅ 404 CATCH-ALL ROUTE */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </AnimatePresence>
+          <View style={{ marginTop: 20 }}>
+            <Button title="Buy Crypto" onPress={() => {
+                const url = getBuyUrl(wallet.address);
+                // Open URL in WebBrowser/WebView here
+            }} />
+          </View>
+        </>
+      )}
+    </View>
   );
-};
-
-export default AppRoutes;
+}
