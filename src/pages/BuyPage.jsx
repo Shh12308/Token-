@@ -9,23 +9,24 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import BottomNav from '../components/BottomNav';
 
-// ✅ NON-CUSTODIAL SESSION
-import { getSessionWallet } from '../utils/session';
+import { unlockWallet } from '../core/walletEngine';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'https://blockvault-backend-production.up.railway.app/api';
+const API_BASE =
+  process.env.REACT_APP_API_URL ||
+  'https://blockvault-backend-production.up.railway.app/api';
 
 const SUPPORTED_NETWORKS = [
   { id: 'ethereum', name: 'Ethereum', symbol: 'ETH' },
   { id: 'polygon', name: 'Polygon', symbol: 'MATIC' },
   { id: 'arbitrum', name: 'Arbitrum', symbol: 'ETH' },
-  { id: 'base', name: 'Base', symbol: 'ETH' },
+  { id: 'base', name: 'Base', symbol: 'ETH' }
 ];
 
 const DEFAULT_CURRENCIES = {
   ethereum: 'ETH',
   polygon: 'MATIC',
   arbitrum: 'ETH',
-  base: 'ETH',
+  base: 'ETH'
 };
 
 const BuyPage = () => {
@@ -52,52 +53,62 @@ const BuyPage = () => {
   };
 
   // ─────────────────────────────────────────────
-  // 🔥 NON-CUSTODIAL BUY FLOW
+  // 🔐 NON-CUSTODIAL BUY FLOW (CORE FIX)
   // ─────────────────────────────────────────────
   const handleBuy = async () => {
     setLoading(true);
     setError('');
 
     try {
-      const sessionWallet = getSessionWallet();
+      // 🔐 Wallet is ALWAYS reconstructed locally
+      const wallet = await unlockWallet();
 
-      if (!sessionWallet) {
-        throw new Error('Wallet not unlocked. Please login again.');
+      if (!wallet?.address) {
+        throw new Error('Wallet unlock failed');
       }
 
-      const walletAddress = sessionWallet.address;
-
-      // 🔐 SIGN REQUEST (PROVES OWNERSHIP)
-      const message = `Authorize buy session at ${Date.now()}`;
-      const signature = await sessionWallet.signMessage(message);
-
-      // 🚀 CALL BACKEND
-      const res = await axios.post(`${API_BASE}/fiat/onramp/session`, {
-        walletAddress,
+      // 🔥 Replay-safe message (NEVER trust backend state)
+      const message = JSON.stringify({
+        action: 'BUY',
+        wallet: wallet.address,
         chain: network,
         amount,
         currency,
         provider,
-        signature,
-        message
+        timestamp: Date.now(),
+        nonce: crypto.randomUUID()
       });
 
-      if (res.data.redirectUrl) {
-        window.location.href = res.data.redirectUrl;
-      } else {
+      // ✍️ SIGN LOCALLY (NON-CUSTODIAL CORE PRINCIPLE)
+      const signature = await wallet.signMessage(message);
+
+      // 🚀 SEND ONLY SIGNED DATA TO BACKEND
+      const res = await axios.post(
+        `${API_BASE}/fiat/onramp/session`,
+        {
+          walletAddress: wallet.address,
+          chain: network,
+          amount,
+          currency,
+          provider,
+          message,
+          signature
+        }
+      );
+
+      if (!res.data?.redirectUrl) {
         throw new Error('No redirect URL received.');
       }
 
+      window.location.href = res.data.redirectUrl;
     } catch (err) {
       console.error(err);
       setError(err.message || 'Failed to initiate buy.');
+    } finally {
       setLoading(false);
     }
   };
 
-  // ─────────────────────────────────────────────
-  // UI
-  // ─────────────────────────────────────────────
   return (
     <div className="dashboard-container-gold">
       <header className="top-header-gold">
@@ -109,19 +120,17 @@ const BuyPage = () => {
 
       <main className="main-scroll-area-gold">
         <div className="card buy-card-gold">
+
+          {/* HEADER */}
           <div className="buy-header-gold">
             <FontAwesomeIcon icon={faCreditCard} size="2x" color="#c9a84c" />
             <h2>Buy Crypto</h2>
             <p style={{ color: '#888', fontSize: 14, marginTop: -10 }}>
-              Funds sent directly to your wallet
+              Funds are sent directly to your wallet
             </p>
           </div>
 
-          {error && (
-            <div className="error-msg">
-              {error}
-            </div>
-          )}
+          {error && <div className="error-msg">{error}</div>}
 
           {/* PROVIDER */}
           <div className="input-group">
@@ -137,8 +146,10 @@ const BuyPage = () => {
           <div className="input-group">
             <label>Network</label>
             <select value={network} onChange={handleNetworkChange}>
-              {SUPPORTED_NETWORKS.map(n => (
-                <option key={n.id} value={n.id}>{n.name}</option>
+              {SUPPORTED_NETWORKS.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.name}
+                </option>
               ))}
             </select>
           </div>
@@ -146,7 +157,10 @@ const BuyPage = () => {
           {/* CURRENCY */}
           <div className="input-group">
             <label>Currency</label>
-            <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+            >
               <option value={DEFAULT_CURRENCIES[network]}>
                 {DEFAULT_CURRENCIES[network]}
               </option>
@@ -166,7 +180,7 @@ const BuyPage = () => {
             />
 
             <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-              {[50, 100, 250, 500].map(val => (
+              {[50, 100, 250, 500].map((val) => (
                 <button
                   key={val}
                   className={`preset-btn ${amount === val ? 'active' : ''}`}
@@ -187,10 +201,10 @@ const BuyPage = () => {
             {loading ? 'Processing...' : `Buy ${currency}`}
           </button>
 
-          {/* SECURITY NOTE */}
+          {/* SECURITY FOOTER */}
           <div className="secure-note-gold">
             <FontAwesomeIcon icon={faShieldAlt} />
-            <span>Non-Custodial Purchase</span>
+            <span>Fully Non-Custodial Signing</span>
           </div>
         </div>
       </main>
