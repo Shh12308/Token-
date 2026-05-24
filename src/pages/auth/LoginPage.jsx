@@ -1,4 +1,4 @@
-import api from '../utils/api';
+import api from '../../utils/api';
 import { ethers } from 'ethers';
 
 const login = async (wallet) => {
