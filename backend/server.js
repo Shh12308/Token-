@@ -142,7 +142,7 @@ app.post('/moonpay/buy-url', (req, res) => {
   try {
     const apiKey = process.env.MOONPAY_API_KEY;
     const secretKey = process.env.MOONPAY_SECRET_KEY;
-    const { walletAddress, amount = 100 } = req.body || {};
+    const { walletAddress, amount = 100, currency = 'gbp' } = req.body || {};
 
     if (!apiKey || !secretKey ||
         secretKey === 'your_test_secret_signing_key') {
@@ -158,11 +158,22 @@ app.post('/moonpay/buy-url', (req, res) => {
       });
     }
 
-    const fiatAmount = Number(amount);
-    if (!Number.isFinite(fiatAmount) ||
-        fiatAmount < 10 || fiatAmount > 10000) {
+    const supportedCurrencies = ['gbp', 'usd', 'eur'];
+    const selectedCurrency =
+      typeof currency === 'string' ? currency.toLowerCase() : '';
+
+    if (!supportedCurrencies.includes(selectedCurrency)) {
       return res.status(400).json({
-        error: 'Amount must be between 10 and 10000 USD'
+        error: 'Supported fiat currencies are GBP, USD and EUR'
+      });
+    }
+
+    const fiatAmount = Number(amount);
+
+    if (!Number.isFinite(fiatAmount) ||
+        fiatAmount < 20 || fiatAmount > 10000) {
+      return res.status(400).json({
+        error: `Amount must be between 20 and 10000 ${selectedCurrency.toUpperCase()}`
       });
     }
 
@@ -174,7 +185,7 @@ app.post('/moonpay/buy-url', (req, res) => {
         walletAddress: walletAddress.trim(),
         currencyCode: 'eth',
         defaultCurrencyCode: 'eth',
-        baseCurrencyCode: 'usd',
+        baseCurrencyCode: selectedCurrency,
         baseCurrencyAmount: String(fiatAmount)
       }
     });
