@@ -23,10 +23,38 @@ const authLimiter = rateLimit({
   message: { error: 'Too many attempts. Please try again later.' }
 });
 
+const checkoutLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Too many checkout attempts. Please try again later.' }
+});
+
 function getBearerToken(req) {
   const header = req.get('authorization');
   if (!header || !header.startsWith('Bearer ')) return null;
   return header.slice(7).trim();
+}
+
+async function requireCustomer(req, res, next) {
+  try {
+    const customer = await auth.authenticate(getBearerToken(req));
+
+    if (!customer) {
+      return res.status(401).json({
+        error: 'Please log in to your CryptoBean account.'
+      });
+    }
+
+    req.customer = customer;
+    return next();
+  } catch (_error) {
+    console.error('Checkout authentication failed');
+    return res.status(500).json({
+      error: 'Unable to verify your account right now.'
+    });
+  }
 }
 
 app.get('/health', (_req, res) => {
@@ -97,6 +125,8 @@ app.post('/auth/logout', async (req, res) => {
 });
 
 
+app.use('/api/nfts', require('./routes/nfts'));
+
 app.get('/api/nfts', async (req, res) => {
   const owner = req.query.owner;
   const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50);
@@ -138,11 +168,11 @@ app.get('/api/nfts', async (req, res) => {
   }
 });
 
-app.post('/moonpay/buy-url', (req, res) => {
+app.post('/moonpay/buy-url', checkoutLimiter, requireCustomer, (req, res) => {
   try {
     const apiKey = process.env.MOONPAY_API_KEY;
     const secretKey = process.env.MOONPAY_SECRET_KEY;
-    const { walletAddress, amount = 100 } = req.body || {};
+    const { walletAddress, amount = 100, currency = 'gbp' } = req.body || {};
 
     if (!apiKey || !secretKey ||
         secretKey === 'your_test_secret_signing_key') {
@@ -158,15 +188,27 @@ app.post('/moonpay/buy-url', (req, res) => {
       });
     }
 
-    const fiatAmount = Number(amount);
-    if (!Number.isFinite(fiatAmount) ||
-        fiatAmount < 10 || fiatAmount > 10000) {
+    const supportedCurrencies = ['gbp', 'usd', 'eur'];
+    const selectedCurrency =
+      typeof currency === 'string' ? currency.toLowerCase() : '';
+
+    if (!supportedCurrencies.includes(selectedCurrency)) {
       return res.status(400).json({
-        error: 'Amount must be between 10 and 10000 USD'
+        error: 'Supported fiat currencies are GBP, USD and EUR'
+      });
+    }
+
+    const fiatAmount = Number(amount);
+
+    if (!Number.isFinite(fiatAmount) ||
+        fiatAmount < 20 || fiatAmount > 10000) {
+      return res.status(400).json({
+        error: `Amount must be between 20 and 10000 ${selectedCurrency.toUpperCase()}`
       });
     }
 
     const moonpay = new MoonPay(secretKey);
+
     const url = moonpay.url.generate({
       flow: 'buy',
       params: {
@@ -174,12 +216,13 @@ app.post('/moonpay/buy-url', (req, res) => {
         walletAddress: walletAddress.trim(),
         currencyCode: 'eth',
         defaultCurrencyCode: 'eth',
-        baseCurrencyCode: 'usd',
+        baseCurrencyCode: selectedCurrency,
         baseCurrencyAmount: String(fiatAmount)
       }
     });
 
     const parsedUrl = new URL(url);
+
     if (parsedUrl.protocol !== 'https:' ||
         parsedUrl.hostname !== 'buy-sandbox.moonpay.com') {
       return res.status(500).json({
@@ -193,6 +236,7 @@ app.post('/moonpay/buy-url', (req, res) => {
       'MoonPay checkout generation failed:',
       error?.message || 'Unknown error'
     );
+
     return res.status(500).json({
       error: 'Unable to generate MoonPay sandbox checkout'
     });
