@@ -334,6 +334,84 @@ app.post('/moonpay/buy-url', checkoutLimiter, requireCustomer, (req, res) => {
   }
 });
 
+
+// MoonPay Sell — sandbox only. The signing secret remains on the backend.
+app.post('/moonpay/sell-url', checkoutLimiter, requireCustomer, (req, res) => {
+  try {
+    const apiKey = process.env.MOONPAY_API_KEY;
+    const secretKey = process.env.MOONPAY_SECRET_KEY;
+    const { amount, currency = 'gbp', asset = 'eth' } = req.body || {};
+
+    if (!apiKey || !secretKey ||
+        secretKey === 'your_test_secret_signing_key') {
+      return res.status(503).json({
+        error: 'MoonPay sandbox credentials are not configured'
+      });
+    }
+
+    // Initially enable Ethereum ETH only until other Sell networks
+    // have been confirmed for this MoonPay account.
+    if (typeof asset !== 'string' || asset.toLowerCase() !== 'eth') {
+      return res.status(400).json({
+        error: 'Ethereum ETH is the only enabled Sell asset at present'
+      });
+    }
+
+    const supportedCurrencies = ['gbp', 'usd', 'eur'];
+    const selectedCurrency =
+      typeof currency === 'string' ? currency.toLowerCase() : '';
+
+    if (!supportedCurrencies.includes(selectedCurrency)) {
+      return res.status(400).json({
+        error: 'Supported payout currencies are GBP, USD and EUR'
+      });
+    }
+
+    const amountText = typeof amount === 'string' ? amount.trim() : String(amount ?? '');
+
+    if (!/^(?:\d{1,12})(?:\.\d{1,18})?$|^\.\d{1,18}$/.test(amountText) ||
+        !Number.isFinite(Number(amountText)) ||
+        Number(amountText) <= 0) {
+      return res.status(400).json({
+        error: 'Enter a valid ETH amount greater than zero'
+      });
+    }
+
+    const moonpay = new MoonPay(secretKey);
+
+    const url = moonpay.url.generate({
+      flow: 'sell',
+      params: {
+        apiKey,
+        baseCurrencyCode: 'eth',
+        baseCurrencyAmount: amountText,
+        defaultBaseCurrencyCode: 'eth',
+        quoteCurrencyCode: selectedCurrency
+      }
+    });
+
+    const parsedUrl = new URL(url);
+
+    if (parsedUrl.protocol !== 'https:' ||
+        parsedUrl.hostname !== 'sell-sandbox.moonpay.com') {
+      return res.status(500).json({
+        error: 'Sandbox Sell URL validation failed'
+      });
+    }
+
+    return res.json({ url });
+  } catch (error) {
+    console.error(
+      'MoonPay Sell URL generation failed:',
+      error?.message || 'Unknown error'
+    );
+
+    return res.status(500).json({
+      error: 'Unable to generate MoonPay sandbox Sell checkout'
+    });
+  }
+});
+
 const HOST = process.env.HOST || '0.0.0.0';
 
 app.listen(PORT, HOST, () => {
