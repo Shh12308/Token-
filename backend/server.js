@@ -31,6 +31,14 @@ const checkoutLimiter = rateLimit({
   message: { error: 'Too many checkout attempts. Please try again later.' }
 });
 
+const alertsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Too many price-alert requests. Please try again later.' }
+});
+
 function getBearerToken(req) {
   const header = req.get('authorization');
   if (!header || !header.startsWith('Bearer ')) return null;
@@ -121,6 +129,88 @@ app.post('/auth/logout', async (req, res) => {
   } catch (_error) {
     console.error('Customer logout failed');
     return res.status(500).json({ error: 'Unable to log out right now' });
+  }
+});
+
+
+// Create a price alert for the authenticated CryptoBean customer.
+app.post('/api/alerts/create', alertsLimiter, requireCustomer, async (req, res) => {
+  try {
+    const { walletAddress, symbol, targetPrice } = req.body || {};
+
+    if (
+      typeof walletAddress !== 'string' ||
+      !/^0x[a-fA-F0-9]{40}$/.test(walletAddress.trim())
+    ) {
+      return res.status(400).json({
+        error: 'A valid Ethereum wallet address is required'
+      });
+    }
+
+    if (
+      typeof symbol !== 'string' ||
+      !/^[A-Za-z0-9]{2,10}$/.test(symbol.trim())
+    ) {
+      return res.status(400).json({ error: 'A valid asset symbol is required' });
+    }
+
+    const priceText = String(targetPrice ?? '').trim();
+    if (
+      !/^\d{1,20}(\.\d{1,18})?$/.test(priceText) ||
+      !Number.isFinite(Number(priceText)) ||
+      Number(priceText) <= 0
+    ) {
+      return res.status(400).json({
+        error: 'Target price must be a positive decimal number'
+      });
+    }
+
+    const result = await require('./db').pool.query(
+      `INSERT INTO price_alerts
+         (customer_id, wallet_address, symbol, target_price, triggered)
+       VALUES ($1, $2, $3, $4, FALSE)
+       RETURNING id, wallet_address, symbol, target_price, triggered, created_at`,
+      [
+        req.customer.id,
+        walletAddress.trim(),
+        symbol.trim().toUpperCase(),
+        priceText
+      ]
+    );
+
+    res.set('Cache-Control', 'no-store');
+    return res.status(201).json({
+      success: true,
+      alert: result.rows[0]
+    });
+  } catch (_error) {
+    console.error('Price alert creation failed');
+    return res.status(500).json({
+      success: false,
+      error: 'Unable to create the price alert right now'
+    });
+  }
+});
+
+// Return only alerts belonging to the authenticated customer.
+app.get('/api/alerts', alertsLimiter, requireCustomer, async (req, res) => {
+  try {
+    const result = await require('./db').pool.query(
+      `SELECT id, wallet_address, symbol, target_price, triggered, created_at
+         FROM price_alerts
+        WHERE customer_id = $1
+        ORDER BY created_at DESC, id DESC
+        LIMIT 100`,
+      [req.customer.id]
+    );
+
+    res.set('Cache-Control', 'no-store');
+    return res.json({ alerts: result.rows });
+  } catch (_error) {
+    console.error('Price alert retrieval failed');
+    return res.status(500).json({
+      error: 'Unable to retrieve price alerts right now'
+    });
   }
 });
 
